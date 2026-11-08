@@ -35,3 +35,27 @@ jobs:
         gh release delete bot-ci-backend -y --cleanup-tag || true
         tail -c 60000 backend-tests.log > notes.txt || echo "sem log" > notes.txt
         gh release create bot-ci-backend --target "$GITHUB_SHA" --title "CI backend ($GITHUB_SHA)" --notes-file notes.txt --prerelease
+
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with: {distribution: temurin, java-version: '17'}
+    - uses: gradle/actions/setup-gradle@v4
+      with: {gradle-version: '8.7'}
+    - name: Testes unitários + compilação do APK
+      run: gradle -p android testDebugUnitTest assembleDebug --no-daemon --console=plain 2>&1 | tee android-build.log; exit ${PIPESTATUS[0]}
+    - name: Publicar APK
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        cp android/app/build/outputs/apk/debug/app-debug.apk BotTraderAI.apk
+        gh release delete bot-trader-ai-latest -y --cleanup-tag || true
+        gh release create bot-trader-ai-latest BotTraderAI.apk --target "$GITHUB_SHA" --title "BOT TRADER AI (última versão)" --notes "APK do app Android. O app precisa do servidor (pasta backend) rodando."
+    - name: Publicar log de erro
+      if: failure()
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        (grep -E "^e: |error:|FAILED|What went wrong|Could not|Unresolved|Exception" -A3 android-build.log | head -c 40000; echo; echo ----; tail -c 15000 android-build.log) > notes.txt
+        gh release delete bot-ci-android -y --cleanup-tag || true
+        gh release create bot-ci-android --target "$GITHUB_SHA" --title "CI android falhou" --notes-file notes.txt --prerelease
