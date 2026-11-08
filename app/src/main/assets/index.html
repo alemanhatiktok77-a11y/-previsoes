@@ -94,7 +94,21 @@ const pct = x => Math.round(x * 100) + '%';
 
 function ymd(d) { return d.toISOString().slice(0,10).replace(/-/g,''); }
 
+const pending = {}; let reqId = 0;
+window.__netCb = (id, body, err) => {
+  const p = pending[id]; if (!p) return; delete pending[id];
+  if (err) return p.reject(new Error(err));
+  try { p.resolve(JSON.parse(body)); } catch (e) { p.reject(new Error('Resposta inválida')); }
+};
 async function getJSON(url) {
+  if (window.AndroidNet) {
+    return new Promise((resolve, reject) => {
+      const id = 'r' + (++reqId);
+      pending[id] = { resolve, reject };
+      setTimeout(() => { if (pending[id]) { delete pending[id]; reject(new Error('Tempo esgotado')); } }, 30000);
+      window.AndroidNet.get(id, url);
+    });
+  }
   const r = await fetch(url, { cache:'no-store' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
@@ -199,7 +213,7 @@ async function load(showSpinner) {
     const ids = league === 'all' ? LEAGUES.slice(1).map(l => l.id) : [league];
     const res = await Promise.allSettled(ids.map(id => scoreboard(id, from, to)));
     const ok = res.filter(r => r.status === 'fulfilled');
-    if (!ok.length) throw new Error('sem conexão');
+    if (!ok.length) throw (res[0] && res[0].reason) || new Error('sem conexão');
     let evs = ok.flatMap(r => r.value);
     const nLive = evs.filter(x => x.ev.status.type.state === 'in').length;
     const nl = $('#nlive'); nl.hidden = !nLive; nl.textContent = nLive;
@@ -220,7 +234,7 @@ async function load(showSpinner) {
     }
     $('#upd').textContent = 'atualizado ' + now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
   } catch (e) {
-    list.innerHTML = '<div class="msg">Não foi possível carregar os jogos.<br>Verifique sua internet.<br>' +
+    list.innerHTML = '<div class="msg">Não foi possível carregar os jogos.<br>Verifique sua internet.<br><small style="opacity:.6">' + String(e && e.message || e).slice(0,140) + '</small><br>' +
       '<button class="retry" onclick="load(true)">Tentar de novo</button></div>';
   }
   loading = false;
