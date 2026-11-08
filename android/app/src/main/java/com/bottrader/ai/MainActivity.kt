@@ -51,6 +51,14 @@ fun App(vm: MainViewModel) {
     val ctx = LocalContext.current
     LaunchedEffect(ui.toast) { ui.toast?.let { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show(); vm.consumeToast() } }
     if (!ui.loggedIn) { LoginScreen(ui, vm); return }
+    // modo celular: mantém a tela ligada enquanto o robô opera (o Android pausaria a conexão com a tela apagada)
+    val keepOn = ui.local && ui.dash?.state == "RUNNING"
+    val activity = ctx as? android.app.Activity
+    DisposableEffect(keepOn) {
+        if (keepOn) activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { }
+    }
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     BackHandler(enabled = ui.screen != Screen.Dashboard || drawer.isOpen) {

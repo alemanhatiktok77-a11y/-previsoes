@@ -50,6 +50,13 @@ fun LoginScreen(ui: UiState, vm: MainViewModel) {
             Text(if (ui.busy) "Conectando…" else "Entrar")
         }
         ui.error?.let { Spacer(Modifier.height(10.dp)); Note(it, C.Down) }
+        Spacer(Modifier.height(26.dp))
+        HorizontalDivider(color = C.Line)
+        Spacer(Modifier.height(18.dp))
+        Text("Não tem servidor?", color = C.Ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Note("O robô roda dentro do celular com os preços oficiais da Kraken (em tempo real, sem conta). Compras simuladas com stop, alvo e taxas reais. Funciona enquanto o app estiver aberto.")
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton({ vm.startLocal() }, modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("Usar sem servidor (Kraken no celular)", fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -382,7 +389,7 @@ fun SettingsScreen(ui: UiState, vm: MainViewModel) {
     val s = ui.settings
     Panel("Servidor") {
         Line("Endereço", ui.server)
-        Line("Criptografia", if (vm.isSecure) "HTTPS ✓" else "HTTP sem criptografia", if (vm.isSecure) C.Up else C.Warn)
+        Line("Criptografia", if (ui.local) "conexões HTTPS/WSS com a Kraken ✓" else if (vm.isSecure) "HTTPS ✓" else "HTTP sem criptografia", if (vm.isSecure) C.Up else C.Warn)
         s?.let { Line("Modo", if (it.mode == "kraken_spot") "Kraken à vista (simulação)" else "Opções binárias (simulação)")
             it.spot?.let { sp -> Line("Velas", "${sp.interval_min} min"); Line("Valor por compra", "${money(sp.stake)} €")
                 Line("Taxa por lado", pct(sp.fee_rate, 2)); Line("Stop / Alvo", "${sp.stop_atr}× / ${sp.target_atr}× ATR"); Line("Tempo máximo", "${sp.max_bars} velas") }
@@ -393,7 +400,8 @@ fun SettingsScreen(ui: UiState, vm: MainViewModel) {
         Note(it.real_execution_note, C.Warn)
         Note("Para integrar uma corretora é preciso uma API oficial documentada, aprovação legal e validação de segurança. Engenharia reversa e automação de cliques não são usadas.")
     } }
-    OutlinedButton({ vm.logout() }, modifier = Modifier.fillMaxWidth()) { Text("Sair") }
+    if (ui.local) Note("O monitoramento só acontece com o app aberto. Ative 'manter a tela ligada' deixando o robô em execução: a tela não apaga enquanto ele opera.")
+    OutlinedButton({ vm.logout() }, modifier = Modifier.fillMaxWidth()) { Text(if (ui.local) "Sair do modo celular" else "Sair") }
 }
 
 @Composable
