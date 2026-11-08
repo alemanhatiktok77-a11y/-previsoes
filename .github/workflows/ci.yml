@@ -64,7 +64,23 @@ jobs:
     - uses: gradle/actions/setup-gradle@v4
       with: {gradle-version: '8.7'}
     - name: Testes unitários + compilação do APK
+      env: {KRAKEN_LIVE: '1'}
       run: gradle -p android testDebugUnitTest assembleDebug --no-daemon --console=plain 2>&1 | tee android-build.log; exit ${PIPESTATUS[0]}
+    - name: Relatório do teste ao vivo (Kotlin)
+      if: always()
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        python3 - <<'PY' > live.txt
+        import glob, re
+        out = []
+        for f in glob.glob('android/app/build/test-results/testDebugUnitTest/*.xml'):
+            s = open(f, encoding='utf-8').read()
+            out += re.findall(r'LIVE: .*', s)
+            out += [f"{m[0]}: {m[1]} testes, {m[2]} falhas" for m in re.findall(r'testsuite name="([^"]+)" tests="(\d+)" skipped="\d+" failures="(\d+)"', s)]
+        print("\n".join(out) or "sem resultados")
+        PY
+        gh release delete android-live-report -y --cleanup-tag || true
+        gh release create android-live-report --target "$GITHUB_SHA" --title "Teste ao vivo do robô do celular" --notes-file live.txt --prerelease
     - name: Publicar APK
       env: {GH_TOKEN: '${{ github.token }}'}
       run: |
