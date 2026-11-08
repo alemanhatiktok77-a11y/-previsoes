@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Roleta Stats</title>
+<style>
+:root{--bg:#0b1411;--card:#13201b;--line:#21342c;--ink:#e9f1ed;--mut:#8aa197;--red:#d93a3a;--blk:#1d1f22;--grn:#169c5b;--gold:#e7b84a;--blue:#4c8dff}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,Roboto,sans-serif;font-size:15px}
+button{font:inherit;color:inherit;border:none;background:none}
+.scr{padding:14px 14px 90px;max-width:560px;margin:0 auto}
+h1{font-size:21px;margin:4px 2px 12px;display:flex;align-items:center;gap:8px}
+h1 small{margin-left:auto;font-size:12px;color:var(--mut);font-weight:500}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 small{font-size:12px;color:var(--mut);font-weight:500}
+.mut{color:var(--mut)}.sm{font-size:12.5px}.b{font-weight:700}
+.n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font-weight:700;font-size:13px;color:#fff;flex:none}
+.n.r{background:var(--red)}.n.k{background:var(--blk);border:1px solid #3a3d41}.n.g{background:var(--grn)}
+.hist{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.hist::-webkit-scrollbar{display:none}
+.pad{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pad button{height:46px;border-radius:10px;font-weight:800;font-size:16px;color:#fff}
+.pad .z{grid-column:span 6;background:var(--grn);height:42px}
+.pad .r{background:var(--red)}.pad .k{background:#2a2d31}
+.pad button:active{transform:scale(.94);filter:brightness(1.25)}
+.row{display:flex;gap:8px;align-items:center}.between{justify-content:space-between}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border-radius:11px;font-weight:650;background:#1e3129;color:var(--ink);width:100%}
+.btn.p{background:var(--gold);color:#241a02}.btn.d{background:#3a1c1c;color:#ff9b9b}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kv{background:#0f1a16;border-radius:10px;padding:9px 10px}.kv span{display:block;font-size:11px;color:var(--mut)}.kv b{font-size:16px}
+.bar{height:7px;background:#0d1713;border-radius:4px;overflow:hidden;margin-top:5px}.bar div{height:100%}
+.trig{border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:9px;background:#0f1a16}
+.trig.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11.5px;font-weight:700}
+.tag.y{background:#3d3110;color:var(--gold)}.tag.g{background:#103a26;color:#5fe0a0}.tag.r{background:#3d1717;color:#ff8f8f}.tag.m{background:#1e2b26;color:var(--mut)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0e1814;border-top:1px solid var(--line);padding:6px 0 calc(8px + env(safe-area-inset-bottom))}
+nav button{flex:1;font-size:11.5px;font-weight:600;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button i{font-style:normal;font-size:20px}nav button.on{color:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;text-align:center;border-top:1px solid var(--line)}th{color:var(--mut);font-weight:600;font-size:11.5px;border-top:none}
+textarea,input,select{width:100%;background:#0f1a16;border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px;font:inherit}
+.heat{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.heat div{border-radius:8px;padding:5px 0;text-align:center;font-size:11px}
+.heat b{display:block;font-size:14px}
+.note{font-size:12.5px;color:var(--mut);line-height:1.45}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#e9f1ed;color:#0b1411;padding:9px 15px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;transition:.2s;pointer-events:none}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav id="nav"></nav>
+<div class="toast" id="toast"></div>
+<script>
+/* ===== roleta europeia ===== */
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const REDS=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const col=n=>n===0?'g':REDS.has(n)?'r':'k';
+const dz=n=>n===0?0:Math.ceil(n/12), cl=n=>n===0?0:((n-1)%3)+1;
+const VOISINS=[22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25], TIERS=[27,13,36,11,30,8,23,10,5,24,16,33], ORPH=[1,20,14,31,9,17,34,6];
+const neigh=(n,k)=>{const i=WHEEL.indexOf(n);const o=[];for(let d=-k;d<=k;d++)o.push(WHEEL[(i+d+37)%37]);return o;};
+
+/* ===== estado ===== */
+const KEY='roleta_stats_v1';
+let S; try{S=JSON.parse(localStorage.getItem(KEY))||{h:[]};}catch(e){S={h:[]};}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const $=s=>document.querySelector(s);
+const pct=x=>(x*100).toFixed(1).replace('.',',')+'%';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1500);}
+const ball=n=>`<span class="n ${col(n)}">${n}</span>`;
+
+/* ===== gatilhos =====
+   cada gatilho: when(hist) -> null ou {bet:[números], label}; payout = lucro por unidade se acertar (aposta total = bet.length unidades no caso de plenos) */
+const TRIGGERS=[
+  {id:'cor',name:'Cor repetida → aposta na cor oposta',param:4,pmin:2,pmax:10,pl:'repetições',
+   when:(h,k)=>{if(h.length<k)return null;const c=col(h[h.length-1]);if(c==='g')return null;for(let i=1;i<=k;i++)if(col(h[h.length-i])!==c)return null;
+     const op=c==='r'?'k':'r';return{bet:range(1,36).filter(n=>col(n)===op),even:true,label:op==='r'?'Vermelho':'Preto'};}},
+  {id:'par',name:'Par/ímpar repetido → aposta no oposto',param:4,pmin:2,pmax:10,pl:'repetições',
+   when:(h,k)=>{if(h.length<k)return null;const l=h[h.length-1];if(!l)return null;const p=l%2;for(let i=1;i<=k;i++){const x=h[h.length-i];if(!x||x%2!==p)return null;}
+     return{bet:range(1,36).filter(n=>n%2!==p),even:true,label:p?'Par':'Ímpar'};}},
+  {id:'alto',name:'Alto/baixo repetido → aposta no oposto',param:4,pmin:2,pmax:10,pl:'repetições',
+   when:(h,k)=>{if(h.length<k)return null;const l=h[h.length-1];if(!l)return null;const a=l>18;for(let i=1;i<=k;i++){const x=h[h.length-i];if(!x||(x>18)!==a)return null;}
+     return{bet:range(1,36).filter(n=>(n>18)!==a),even:true,label:a?'Baixo (1–18)':'Alto (19–36)'};}},
+  {id:'duz',name:'Dúzia atrasada → aposta nela',param:10,pmin:4,pmax:30,pl:'giros sem sair',
+   when:(h,k)=>{for(let d=1;d<=3;d++){let gap=0;for(let i=h.length-1;i>=0&&dz(h[i])!==d;i--)gap++;if(gap>=k&&gap<h.length+1&&h.length>=k)return{bet:range(1,36).filter(n=>dz(n)===d),label:d+'ª dúzia'};}return null;}},
+  {id:'col',name:'Coluna atrasada → aposta nela',param:10,pmin:4,pmax:30,pl:'giros sem sair',
+   when:(h,k)=>{for(let c=1;c<=3;c++){let gap=0;for(let i=h.length-1;i>=0&&cl(h[i])!==c;i--)gap++;if(gap>=k&&h.length>=k)return{bet:range(1,36).filter(n=>cl(n)===c),label:c+'ª coluna'};}return null;}},
+  {id:'viz',name:'Vizinhos do último número na roda',param:2,pmin:1,pmax:4,pl:'vizinhos de cada lado',
+   when:(h,k)=>h.length?{bet:neigh(h[h.length-1],k),label:h[h.length-1]+' e vizinhos'}:null},
+  {id:'quente',name:'Números quentes (mais saíram nos últimos 37)',param:5,pmin:1,pmax:10,pl:'números',
+   when:(h,k)=>{if(h.length<37)return null;const c=Array(37).fill(0);h.slice(-37).forEach(n=>c[n]++);const top=range(0,36).sort((a,b)=>c[b]-c[a]||a-b).slice(0,k);return{bet:top,label:top.join(', ')};}},
+  {id:'frio',name:'Números atrasados (mais tempo sem sair)',param:5,pmin:1,pmax:10,pl:'números',
+   when:(h,k)=>{if(h.length<37)return null;const g=range(0,36).map(n=>{const i=h.lastIndexOf(n);return i<0?h.length:h.length-1-i;});const top=range(0,36).sort((a,b)=>g[b]-g[a]||a-b).slice(0,k);return{bet:top,label:top.join(', ')};}},
+  {id:'trans',name:'O que mais saiu depois do último número',param:3,pmin:1,pmax:8,pl:'números',
+   when:(h,k)=>{if(h.length<50)return null;const l=h[h.length-1];const c=Array(37).fill(0);let m=0;for(let i=0;i<h.length-1;i++)if(h[i]===l){c[h[i+1]]++;m++;}if(m<3)return null;
+     const top=range(0,36).sort((a,b)=>c[b]-c[a]||a-b).slice(0,k);return{bet:top,label:top.join(', ')};}},
+];
+function range(a,b){const o=[];for(let i=a;i<=b;i++)o.push(i);return o;}
+S.par=S.par||{};TRIGGERS.forEach(t=>{if(S.par[t.id])t.param=S.par[t.id];});
+
+// Testa o gatilho em cada ponto do histórico: o que ele indicaria × o que realmente saiu
+function backtest(t,h){
+  let n=0,hits=0,profit=0,expect=0;
+  for(let i=1;i<h.length;i++){
+    const s=t.when(h.slice(0,i),t.param); if(!s)continue;
+    n++; const win=s.bet.includes(h[i]); const units=s.bet.length;
+    expect+=units/37;
+    profit+= win ? 36/units-1 : -1; if(win)hits++; // 1 ficha por disparo, paga como na roleta (cor 1:1, dúzia 2:1, pleno 35:1)
+  }
+  const exp=n?expect/n:0, rate=n?hits/n:0;
+  const sd=n?Math.sqrt(n*exp*(1-exp)):0, z=sd?(hits-n*exp)/sd:0;
+  return{n,hits,rate,exp,profit:Math.round(profit*10)/10,z};
+}
+function verdict(b){
+  if(b.n<30)return['m','Poucos dados'];
+  if(b.z>=2.5)return['g','Acima do acaso'];
+  if(b.z<=-2.5)return['r','Abaixo do acaso'];
+  return['y','Igual ao acaso'];
+}
+
+/* ===== telas ===== */
+let tab='reg';
+function nav(){const it=[['reg','🎯','Registrar'],['trig','⚡','Gatilhos'],['est','📊','Estatísticas'],['sim','🧪','Simulador']];
+  $('#nav').innerHTML=it.map(([k,i,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')"><i>${i}</i>${l}</button>`).join('');}
+function go(t){tab=t;render();scrollTo(0,0);}
+function render(){nav();({reg:rReg,trig:rTrig,est:rEst,sim:rSim})[tab]();}
+
+function activeNow(){return TRIGGERS.map(t=>({t,s:t.when(S.h,t.param),b:backtest(t,S.h)})).filter(x=>x.s);}
+
+function rReg(){
+  const h=S.h, act=activeNow();
+  $('#app').innerHTML=`<div class="scr"><h1>🎰 Roleta Stats <small>${h.length} giros</small></h1>
+  <div class="card"><h2>Últimos números <small>mais recente à esquerda</small></h2>
+    <div class="hist">${h.length?h.slice(-40).reverse().map(ball).join(''):'<span class="sm mut">Toque nos números abaixo conforme forem saindo.</span>'}</div></div>
+  <div class="card"><div class="pad"><button class="z" onclick="add(0)">0</button>
+    ${range(1,36).map(n=>`<button class="${col(n)}" onclick="add(${n})">${n}</button>`).join('')}</div>
+    <div class="grid2" style="margin-top:10px"><button class="btn" onclick="undo()">↶ Desfazer</button><button class="btn" onclick="go('trig')">⚡ Ver gatilhos</button></div></div>
+  ${act.length?`<div class="card"><h2>Gatilhos ativos agora <small>${act.length}</small></h2>${act.slice(0,4).map(x=>trigCard(x,true)).join('')}
+     <button class="btn" onclick="go('trig')">Ver todos</button></div>`:''}
+  <div class="card"><h2>Importar histórico</h2><p class="note" style="margin-bottom:8px">Cole uma lista de números (do mais antigo para o mais recente), separados por espaço ou vírgula.</p>
+    <textarea id="imp" rows="3" placeholder="17 32 5 0 22 ..."></textarea><div style="height:8px"></div>
+    <div class="grid2"><button class="btn p" onclick="imp()">Importar</button><button class="btn d" onclick="clr()">Limpar tudo</button></div></div>
+  </div>`;
+}
+function add(n){S.h.push(n);save();render();if(navigator.vibrate)navigator.vibrate(15);}
+function undo(){S.h.pop();save();render();}
+function imp(){const v=($('#imp').value.match(/\d+/g)||[]).map(Number).filter(n=>n>=0&&n<=36);if(!v.length)return toast('Nenhum número válido');S.h=S.h.concat(v);save();render();toast(v.length+' números importados');}
+let clrArm=false;function clr(){if(!clrArm){clrArm=true;toast('Toque de novo para confirmar');setTimeout(()=>clrArm=false,2500);return;}S.h=[];save();render();toast('Histórico apagado');}
+
+function trigCard(x,compact){
+  const {t,s,b}=x,[vc,vt]=verdict(b);
+  return `<div class="trig ${s?'on':''}"><div class="row between"><b style="font-size:14px">${t.name}</b></div>
+   ${s?`<div style="margin:8px 0 6px"><span class="tag y">AGORA → ${s.label}</span></div>`:''}
+   <div class="grid3" style="margin-top:8px">
+    <div class="kv"><span>Disparou</span><b>${b.n}×</b></div>
+    <div class="kv"><span>Acertos reais</span><b>${b.n?pct(b.rate):'—'}</b></div>
+    <div class="kv"><span>Acaso puro</span><b>${b.n?pct(b.exp):'—'}</b></div></div>
+   <div class="row between" style="margin-top:8px"><span class="tag ${vc}">${vt}</span>
+    <span class="sm ${b.profit>=0?'':'mut'}">Saldo se tivesse apostado 1 ficha: <b style="color:${b.profit>=0?'#5fe0a0':'#ff8f8f'}">${b.profit>0?'+':''}${b.profit.toLocaleString('pt-BR')}</b></span></div>
+   ${compact?'':`<div class="row" style="margin-top:9px"><span class="sm mut" style="flex:1">${t.pl}: <b style="color:var(--ink)">${t.param}</b></span>
+     <button class="btn" style="width:40px;padding:6px" onclick="setP('${t.id}',-1)">−</button><button class="btn" style="width:40px;padding:6px" onclick="setP('${t.id}',1)">+</button></div>`}</div>`;
+}
+function setP(id,d){const t=TRIGGERS.find(x=>x.id===id);t.param=Math.max(t.pmin,Math.min(t.pmax,t.param+d));S.par[id]=t.param;save();render();}
+
+function rTrig(){
+  const all=TRIGGERS.map(t=>({t,s:t.when(S.h,t.param),b:backtest(t,S.h)})).sort((a,b)=>(!!b.s-!!a.s)||(b.b.rate-b.b.exp)-(a.b.rate-a.b.exp));
+  $('#app').innerHTML=`<div class="scr"><h1>⚡ Gatilhos <small>${S.h.length} giros</small></h1>
+  <div class="card note">Cada gatilho foi testado em todo o seu histórico: quantas vezes ele disparou, quanto acertou de verdade e quanto acertaria por puro acaso. Se a taxa real ficar <b style="color:#5fe0a0">bem acima</b> do acaso com muitos disparos, o padrão tem força. Ajuste os parâmetros com − e +.</div>
+  ${S.h.length<30?'<div class="card note">Registre pelo menos 100 giros para os testes terem valor.</div>':''}
+  ${all.map(x=>trigCard(x,false)).join('')}</div>`;
+}
+
+function rEst(){
+  const h=S.h,N=h.length;
+  if(N<10){$('#app').innerHTML=`<div class="scr"><h1>📊 Estatísticas</h1><div class="card note">Registre pelo menos 10 giros.</div></div>`;return;}
+  const c=Array(37).fill(0);h.forEach(n=>c[n]++);
+  const gap=range(0,36).map(n=>{const i=h.lastIndexOf(n);return i<0?N:N-1-i;});
+  const cnt=f=>h.filter(f).length;
+  const groups=[['Vermelho',cnt(n=>col(n)==='r'),18],['Preto',cnt(n=>col(n)==='k'),18],['Zero',c[0],1],['Par',cnt(n=>n&&n%2===0),18],['Ímpar',cnt(n=>n%2===1),18],
+    ['1–18',cnt(n=>n&&n<=18),18],['19–36',cnt(n=>n>18),18],['1ª dúzia',cnt(n=>dz(n)===1),12],['2ª dúzia',cnt(n=>dz(n)===2),12],['3ª dúzia',cnt(n=>dz(n)===3),12],
+    ['Voisins',cnt(n=>VOISINS.includes(n)),17],['Tiers',cnt(n=>TIERS.includes(n)),12],['Orphelins',cnt(n=>ORPH.includes(n)),8]];
+  // qui-quadrado de uniformidade
+  const e=N/37,chi=c.reduce((s,o)=>s+(o-e)*(o-e)/e,0); // gl=36; crítico 5% ≈ 50,998
+  const mx=Math.max(...c);
+  let streak=1,best=1,bc='';for(let i=1;i<N;i++){if(col(h[i])===col(h[i-1])&&col(h[i])!=='g'){streak++;if(streak>best){best=streak;bc=col(h[i]);}}else streak=1;}
+  let reps=0;for(let i=1;i<N;i++)if(h[i]===h[i-1])reps++;
+  $('#app').innerHTML=`<div class="scr"><h1>📊 Estatísticas <small>${N} giros</small></h1>
+  <div class="card"><h2>Teste de aleatoriedade <small>qui-quadrado</small></h2>
+    <div class="grid2"><div class="kv"><span>Valor medido</span><b>${chi.toFixed(1)}</b></div><div class="kv"><span>Limite (95%)</span><b>51,0</b></div></div>
+    <p class="note" style="margin-top:8px">${N<185?'Com menos de ~185 giros o teste ainda é fraco. ':''}${chi>51?'<b style="color:var(--gold)">Distribuição fora do esperado</b> — pode indicar roda viciada ou ser variação de amostra; continue registrando para confirmar.':'Distribuição <b>compatível com uma roleta aleatória</b> — nenhum número sai significativamente mais que os outros.'}</p></div>
+  <div class="card"><h2>Frequência de cada número <small>esperado ${e.toFixed(1)} cada</small></h2>
+    <div class="heat">${range(0,36).map(n=>{const a=c[n]/mx;return`<div style="background:${col(n)==='r'?`rgba(217,58,58,${.15+a*.75})`:col(n)==='g'?`rgba(22,156,91,${.15+a*.75})`:`rgba(160,170,180,${.08+a*.45})`}"><b>${n}</b>${c[n]}×</div>`;}).join('')}</div></div>
+  <div class="card"><h2>Quentes e atrasados</h2>
+    <div class="sm mut" style="margin-bottom:6px">Mais saíram</div><div class="row" style="flex-wrap:wrap;gap:5px;margin-bottom:10px">${range(0,36).sort((a,b)=>c[b]-c[a]).slice(0,8).map(n=>ball(n)+`<span class="sm mut">${c[n]}</span>`).join(' ')}</div>
+    <div class="sm mut" style="margin-bottom:6px">Mais atrasados (giros sem sair)</div><div class="row" style="flex-wrap:wrap;gap:5px">${range(0,36).sort((a,b)=>gap[b]-gap[a]).slice(0,8).map(n=>ball(n)+`<span class="sm mut">${gap[n]}</span>`).join(' ')}</div></div>
+  <div class="card"><h2>Apostas externas e setores</h2><table><tr><th style="text-align:left">Grupo</th><th>Saiu</th><th>Real</th><th>Esperado</th></tr>
+    ${groups.map(([n,k,m])=>`<tr><td style="text-align:left">${n}</td><td>${k}</td><td>${pct(k/N)}</td><td class="mut">${pct(m/37)}</td></tr>`).join('')}</table></div>
+  <div class="card"><h2>Sequências</h2><div class="grid2">
+    <div class="kv"><span>Maior sequência de cor</span><b>${best}× ${bc==='r'?'vermelho':bc==='k'?'preto':''}</b></div>
+    <div class="kv"><span>Número repetido seguido</span><b>${reps}× <span class="sm mut">(esperado ${(Math.max(0,N-1)/37).toFixed(1)})</span></b></div></div></div>
+  </div>`;
+}
+
+/* ===== simulador ===== */
+let simRes=null;
+function rSim(){
+  $('#app').innerHTML=`<div class="scr"><h1>🧪 Simulador</h1>
+  <div class="card note">Gera giros de uma roleta 100% aleatória (como um RNG certificado) e roda todos os gatilhos nela. Compare com os resultados do seu histórico real: se um gatilho dá o mesmo resultado nos dois, o "padrão" é só o acaso.</div>
+  <div class="card"><div class="grid3">${[1000,10000,50000].map(n=>`<button class="btn p" onclick="sim(${n})">${n.toLocaleString('pt-BR')} giros</button>`).join('')}</div></div>
+  <div id="simOut">${simRes||''}</div></div>`;
+}
+function sim(N){
+  $('#simOut').innerHTML='<div class="card note">Simulando...</div>';
+  setTimeout(()=>{
+    const h=[];const r=new Uint32Array(N);crypto.getRandomValues(r);for(let i=0;i<N;i++)h.push(r[i]%37);
+    const rows=TRIGGERS.map(t=>({t,b:backtestFast(t,h)}));
+    simRes=`<div class="card"><h2>Resultado em ${N.toLocaleString('pt-BR')} giros aleatórios</h2>
+     <table><tr><th style="text-align:left">Gatilho</th><th>Acerto</th><th>Acaso</th><th>Saldo</th></tr>
+     ${rows.map(({t,b})=>`<tr><td style="text-align:left;font-size:12px">${t.name.split('→')[0].split('(')[0]}</td><td>${pct(b.rate)}</td><td class="mut">${pct(b.exp)}</td><td style="color:${b.profit>=0?'#5fe0a0':'#ff8f8f'}">${b.profit>0?'+':''}${b.profit.toLocaleString('pt-BR')}</td></tr>`).join('')}</table>
+     <p class="note" style="margin-top:8px">Saldo = fichas ganhas ou perdidas apostando 1 ficha a cada disparo.</p></div>`;
+    $('#simOut').innerHTML=simRes;
+  },30);
+}
+// versão rápida: usa janela recente para não recalcular o histórico inteiro a cada passo
+function backtestFast(t,h){let n=0,hits=0,profit=0,expect=0;
+  for(let i=60;i<h.length;i++){const w=t.id==='trans'?h.slice(Math.max(0,i-400),i):h.slice(Math.max(0,i-60),i);const s=t.when(w,t.param);if(!s)continue;
+    n++;const u=s.bet.length;expect+=u/37;if(s.bet.includes(h[i])){hits++;profit+=36/u-1;}else profit-=1;}
+  return{n,hits,rate:n?hits/n:0,exp:n?expect/n:0,profit:Math.round(profit)};}
+
+window.onBack=()=>{if(tab!=='reg'){go('reg');return true;}return false;};
+render();
+</script>
+</body>
+</html>
