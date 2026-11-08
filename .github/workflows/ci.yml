@@ -1,0 +1,37 @@
+name: BOT TRADER AI CI
+on: [push, workflow_dispatch]
+permissions:
+  contents: write
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_USER: bot, POSTGRES_PASSWORD: bot, POSTGRES_DB: bot}
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U bot" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    defaults: {run: {working-directory: backend}}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with: {python-version: '3.12'}
+    - run: pip install -r requirements-dev.txt
+    - name: Testes (unitários + integração com PostgreSQL e Redis)
+      env:
+        TEST_DATABASE_URL: postgresql://bot:bot@localhost:5432/bot
+        TEST_REDIS_URL: redis://localhost:6379/0
+      run: python -m pytest -v -rs 2>&1 | tee ../backend-tests.log; exit ${PIPESTATUS[0]}
+    - name: Build da imagem Docker
+      run: docker build -t bot-trader-ai-api . 2>&1 | tail -20
+    - name: Publicar relatório de testes
+      if: always()
+      working-directory: .
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        gh release delete bot-ci-backend -y --cleanup-tag || true
+        tail -c 60000 backend-tests.log > notes.txt || echo "sem log" > notes.txt
+        gh release create bot-ci-backend --target "$GITHUB_SHA" --title "CI backend ($GITHUB_SHA)" --notes-file notes.txt --prerelease

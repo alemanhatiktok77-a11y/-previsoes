@@ -1,0 +1,12 @@
+# HTTPS automático (Let's Encrypt) quando SITE_ADDRESS é um domínio público, ex.: bot.meudominio.com
+# Na rede local use SITE_ADDRESS=https://192.168.0.10 e descomente "tls internal" (certificado próprio).
+{$SITE_ADDRESS} {
+	# tls internal
+	encode gzip
+	reverse_proxy api:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}
