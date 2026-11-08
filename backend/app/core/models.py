@@ -113,6 +113,12 @@ class Trade:
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
     created_ms: int = field(default_factory=now_ms)
     closed_ms: Optional[int] = None
+    kind: str = "binary"                 # binary | spot
+    stop_price: Optional[float] = None   # spot: stop de perda
+    target_price: Optional[float] = None # spot: alvo de lucro
+    quantity: float = 0.0                # spot: quantidade do ativo
+    fees: float = 0.0                    # spot: taxas pagas (entrada + saída)
+    exit_reason: str = ""                # spot: stop | alvo | tempo
 
     @property
     def exit_t(self) -> int:

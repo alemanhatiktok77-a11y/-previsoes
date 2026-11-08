@@ -171,6 +171,111 @@ class TwelveDataProvider(MarketDataProvider):
                     await asyncio.sleep(8)  # 8 req/min no plano gratuito
 
 
+class KrakenProvider(MarketDataProvider):
+    """Kraken — API pública oficial (sem conta, sem chave):
+      REST  https://docs.kraken.com/api/docs/rest-api/get-ohlc-data       GET /0/public/OHLC
+      WS v2 https://docs.kraken.com/api/docs/websocket-v2/ohlc            canal "ohlc"
+    O REST devolve até 720 velas; a última ainda está em formação."""
+    source_id = "kraken"
+    REST = "https://api.kraken.com/0/public/OHLC"
+    WS = "wss://ws.kraken.com/v2"
+    REST_PAIR = {"BTC/EUR": "XBTEUR", "ETH/EUR": "ETHEUR", "SOL/EUR": "SOLEUR", "XRP/EUR": "XRPEUR", "ADA/EUR": "ADAEUR"}
+
+    def __init__(self, interval_min: int = 15, clock=None):
+        super().__init__()
+        self.interval = interval_min
+        self.clock = clock or (lambda: int(time.time() * 1000))
+        self.last_message_ms = 0
+
+    @staticmethod
+    def parse_rest(j: dict, interval_min: int, now_ms: int) -> list:
+        if j.get("error"):
+            raise RuntimeError("; ".join(j["error"]))
+        res = j["result"]
+        key = next(k for k in res if k != "last")
+        rows = [Candle(int(r[0]) * 1000, float(r[1]), float(r[2]), float(r[3]), float(r[4]), float(r[6])) for r in res[key]]
+        if rows and rows[-1].t + interval_min * 60_000 > now_ms:
+            rows.pop()  # vela em formação
+        return rows
+
+    @staticmethod
+    def _iso_ms(s: str) -> int:
+        from datetime import datetime
+        return int(datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1000)
+
+    @classmethod
+    def parse_ws(cls, msg: dict) -> list:
+        """Converte uma mensagem do canal ohlc em [(símbolo, Candle, timestamp_ms)]."""
+        if msg.get("channel") != "ohlc" or msg.get("type") not in ("snapshot", "update"):
+            return []
+        out = []
+        for d in msg.get("data", []):
+            c = Candle(cls._iso_ms(d["interval_begin"]), float(d["open"]), float(d["high"]), float(d["low"]), float(d["close"]), float(d.get("volume", 0)))
+            out.append((d["symbol"], c, cls._iso_ms(d["timestamp"]) if d.get("timestamp") else None))
+        return out
+
+    async def history(self, asset: Asset, limit: int = 720) -> list:
+        import httpx
+        pair = self.REST_PAIR[_ext(asset)]
+        async with httpx.AsyncClient(timeout=15) as cli:
+            r = await cli.get(self.REST, params={"pair": pair, "interval": self.interval})
+            r.raise_for_status()
+            return self.parse_rest(r.json(), self.interval, self.clock())[-limit:]
+
+    async def stream(self, assets, on_candle, stop):
+        import websockets
+        by_ext = {_ext(a): a.symbol for a in assets}
+        current: dict = {}   # símbolo → vela em formação
+        backoff = 1
+        while not stop.is_set():
+            try:
+                async with websockets.connect(self.WS, ping_interval=20, ping_timeout=10, open_timeout=10) as ws:
+                    await ws.send(json.dumps({"method": "subscribe", "params": {"channel": "ohlc", "symbol": list(by_ext), "interval": self.interval}}))
+                    self.connected, self.last_error, backoff = True, "", 1
+                    log.info("kraken conectado")
+                    while not stop.is_set():
+                        msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=30))
+                        now = self.clock()
+                        self.last_message_ms = now
+                        if msg.get("channel") == "heartbeat":
+                            for s in by_ext.values():
+                                self.last_event_ms[s] = now
+                            continue
+                        if msg.get("method") == "subscribe" and not msg.get("success", True):
+                            raise RuntimeError(msg.get("error", "falha na inscrição"))
+                        for ext, c, ts in self.parse_ws(msg):
+                            sym = by_ext.get(ext)
+                            if not sym:
+                                continue
+                            self.last_event_ms[sym] = now
+                            if ts:
+                                self.latency_ms[sym] = max(0, now - ts)
+                            prev = current.get(sym)
+                            if prev and c.t > prev.t:              # começou vela nova → a anterior fechou
+                                await on_candle(sym, prev, True, c.t)
+                            if not prev or c.t >= prev.t:
+                                current[sym] = c
+                                await on_candle(sym, c, False, ts or now)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                self.connected, self.last_error = False, f"{type(e).__name__}: {e}"
+                self.reconnects += 1
+                log.warning("kraken desconectado (%s) — nova tentativa em %ss", e, backoff)
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=backoff)
+                except asyncio.TimeoutError:
+                    pass
+                backoff = min(30, backoff * 2)
+        self.connected = False
+
+
+def kraken_assets() -> list:
+    return [Asset("BTC/EUR@kraken", "BTC/EUR", MarketType.NORMAL, "kraken", 1, ("EUR", "USD", "CRYPTO")),
+            Asset("ETH/EUR@kraken", "ETH/EUR", MarketType.NORMAL, "kraken", 2, ("EUR", "USD", "CRYPTO")),
+            Asset("SOL/EUR@kraken", "SOL/EUR", MarketType.NORMAL, "kraken", 2, ("EUR", "USD", "CRYPTO"))]
+
+
 class OTCRegistry:
     """Fontes OTC — vazio por padrão.
 

@@ -17,7 +17,7 @@ PW = "senha-muito-forte-123"
 @pytest.fixture()
 def client(tmp_path):
     db = os.getenv("TEST_DATABASE_URL") or f"sqlite:///{tmp_path}/t.db"
-    s = Settings(database_url=db, redis_url=os.getenv("TEST_REDIS_URL", ""), jwt_secret="x" * 40, admin_user="admin",
+    s = Settings(mode="binary", database_url=db, redis_url=os.getenv("TEST_REDIS_URL", ""), jwt_secret="x" * 40, admin_user="admin",
                  admin_password=PW, market_data=False)
     app = create_app(s)
     with TestClient(app) as c:

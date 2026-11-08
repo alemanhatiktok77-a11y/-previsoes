@@ -46,10 +46,10 @@ class DataGuard:
         last = provider.last_event_ms.get(asset.symbol)
         if last is None:
             r.append("nenhum dado ao vivo recebido")
-        elif now_ms - last > self.cfg.max_silence_ms and provider.source_id == "binance":
+        elif now_ms - last > self.cfg.max_silence_ms and provider.source_id in ("binance", "kraken"):
             r.append(f"sem dados há {(now_ms - last) // 1000} s")
         lat = provider.latency_ms.get(asset.symbol)
-        limit = self.cfg.max_latency_ms if provider.source_id == "binance" else self.cfg.max_bar_delay_ms
+        limit = self.cfg.max_latency_ms if provider.source_id in ("binance", "kraken") else self.cfg.max_bar_delay_ms
         if lat is not None and lat > limit:
             r.append(f"dados atrasados ({lat} ms)")
         if history_len < self.cfg.min_history:

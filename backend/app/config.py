@@ -12,6 +12,10 @@ def _f(name, default):
 
 @dataclass
 class Settings:
+    mode: str = field(default_factory=lambda: os.getenv("BOT_MODE", "kraken_spot"))      # kraken_spot | binary
+    kraken_interval: int = field(default_factory=lambda: int(os.getenv("KRAKEN_INTERVAL_MIN", "15")))
+    spot_fee: float = field(default_factory=lambda: _f("SPOT_FEE", 0.004))
+    spot_stake: float = field(default_factory=lambda: _f("SPOT_STAKE", 100))
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./bot.db"))
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", ""))
     jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET") or secrets.token_urlsafe(48))
@@ -31,5 +35,9 @@ class Settings:
     min_confidence: float = field(default_factory=lambda: _f("RISK_MIN_CONFIDENCE", 0.56))
 
     def risk_defaults(self) -> dict:
+        if self.mode == "kraken_spot":
+            return {"stake": self.spot_stake, "payout": 1.0, "daily_loss_limit": self.daily_loss_limit,
+                    "max_exposure": max(self.max_exposure, self.spot_stake * 3), "max_trades_day": self.max_trades_day,
+                    "min_confidence": 0.0, "allow_uncalibrated": False}
         return {"stake": self.stake, "payout": self.payout, "daily_loss_limit": self.daily_loss_limit,
                 "max_exposure": self.max_exposure, "max_trades_day": self.max_trades_day, "min_confidence": self.min_confidence}

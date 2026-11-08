@@ -30,6 +30,15 @@
 | Persistência | `db/repository.py` | SQLAlchemy Core (PostgreSQL/SQLite) e versão em memória |
 | Eventos | `bus.py` | Redis Pub/Sub ou fila local, seguro entre threads |
 
+## Modo Kraken à vista (padrão: `BOT_MODE=kraken_spot`)
+- Dados: API pública oficial da Kraken (REST `/0/public/OHLC` + WebSocket v2 canal `ohlc`), sem conta e sem chave.
+- Kraken está na lista branca da AMF (licença MiCA via Banco Central da Irlanda).
+- `app/spot/engine.py`: só COMPRA (à vista não se vende a descoberto); stop 1,5×ATR, alvo 2,5×ATR, tempo máximo 16 velas;
+  taxa de 0,40% por lado (Kraken Pro, taker); recusa entradas cujo alvo não cubra 2× as taxas; só entra quando o resultado
+  médio PASSADO (após taxas) do mesmo tipo de entrada é positivo; STOP de emergência zera posições abertas.
+- `scripts/kraken_smoke.py` roda no CI com dados reais e publica o relatório na release `kraken-real-report`.
+- Próximo passo (não implementado): adaptador de execução real via API privada oficial da Kraken, com chave sem permissão de saque.
+
 ## Regras de tempo (sem dados futuros)
 - Decisão no **fechamento** da vela *i*; entrada na **abertura** da vela *i+2*; resultado no **fechamento** da vela *i+1+expiração*.
 - O timeframe de 5 min usa apenas a vela de 5 min **já fechada**.

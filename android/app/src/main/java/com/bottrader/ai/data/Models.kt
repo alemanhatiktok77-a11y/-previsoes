@@ -18,6 +18,8 @@ data class TradeDto(
     val entry_price: Double? = null, val exit_price: Double? = null, val status: String = "",
     val pnl: Double = 0.0, val reasons: List<String> = emptyList(), val cancel_reason: String = "",
     val created_ms: Long = 0, val closed_ms: Long? = null,
+    val kind: String = "binary", val stop_price: Double? = null, val target_price: Double? = null,
+    val quantity: Double = 0.0, val fees: Double = 0.0, val exit_reason: String = "",
 )
 
 @Serializable
@@ -39,7 +41,7 @@ data class RiskCfg(val stake: Double = 10.0, val payout: Double = 0.85, val dail
 data class Dashboard(
     val state: String = "STOPPED", val server_time: Long = 0, val clock_offset_ms: Long = 0,
     val capital: Double = 0.0, val initial_capital: Double = 0.0, val pnl: Double = 0.0, val trades_total: Int = 0,
-    val open_trades: List<TradeDto> = emptyList(), val win_rate: Double? = null, val breakeven: Double = 0.54,
+    val open_trades: List<TradeDto> = emptyList(), val win_rate: Double? = null, val breakeven: Double? = null, val mode: String = "",
     val assets_monitored: Int = 0, val latency_ms: Long? = null, val last_trades: List<TradeDto> = emptyList(),
     val connections: List<ConnDto> = emptyList(), val risk: RiskState = RiskState(),
 )
@@ -79,10 +81,13 @@ data class StrategyDto(val name: String, val regimes: List<String> = emptyList()
 @Serializable data class EqDto(val t: Long? = null, val equity: Double = 0.0)
 @Serializable data class DetDto(val recent: Double? = null, val before: Double? = null, val degraded: Boolean = false)
 @Serializable data class WfDto(val tested: Int = 0, val wins: Int = 0, val rate: Double? = null, val ci: List<Double>? = null)
-@Serializable data class BtDto(val signals: Int = 0, val walk_forward: Map<String, WfDto> = emptyMap())
+@Serializable data class WfDto2(val tested: Int = 0, val wins: Int = 0, val rate: Double? = null, val mean_pct: Double? = null, val total_pct: Double? = null)
+@Serializable data class SumDto(val n: Int = 0, val win_rate: Double? = null, val mean_pct: Double? = null, val mean_gross_pct: Double? = null, val total_pct: Double? = null)
+@Serializable data class BtDto(val signals: Int = 0, val summary: SumDto? = null, val walk_forward: Map<String, WfDto2> = emptyMap())
 
 @Serializable
-data class StatsDto(val n: Int = 0, val wins: Int = 0, val rate: Double? = null, val ci: List<Double>? = null, val breakeven: Double = 0.54,
+data class StatsDto(val n: Int = 0, val wins: Int = 0, val rate: Double? = null, val ci: List<Double>? = null, val breakeven: Double? = null,
+                    val mode: String = "", val pnl_total: Double = 0.0, val fees_total: Double = 0.0,
                     val by_asset: List<GroupDto> = emptyList(), val by_strategy: List<GroupDto> = emptyList(),
                     val by_expiry: List<GroupDto> = emptyList(), val by_hour: List<GroupDto> = emptyList(),
                     val equity: List<EqDto> = emptyList(), val deterioration: DetDto? = null, val backtest: Map<String, BtDto> = emptyMap())
@@ -94,7 +99,11 @@ data class DecisionDto(val id: String, val ts: Long = 0, val asset: String = "",
 @Serializable data class BrokerDto(val name: String, val real_money: Boolean = false)
 
 @Serializable
-data class SettingsDto(val twelvedata_configured: Boolean = false, val redis: Boolean = false, val database: String = "",
+data class SpotCfgDto(val fee_rate: Double = 0.0, val stop_atr: Double = 0.0, val target_atr: Double = 0.0, val max_bars: Int = 0,
+                      val stake: Double = 0.0, val interval_min: Int = 0)
+
+@Serializable
+data class SettingsDto(val mode: String = "", val spot: SpotCfgDto? = null, val twelvedata_configured: Boolean = false, val redis: Boolean = false, val database: String = "",
                        val max_latency_ms: Int = 0, val news_block_min: Int = 0, val brokers: List<BrokerDto> = emptyList(),
                        val real_execution: Boolean = false, val real_execution_note: String = "")
 

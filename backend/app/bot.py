@@ -19,7 +19,8 @@ from app.brokers.paper import PaperBroker
 from app.config import Settings
 from app.core.models import Asset, BotState, Candle, Decision, MarketType, Trade
 from app.data.guard import DataGuard, GuardConfig
-from app.data.providers import BinanceProvider, OTCRegistry, TwelveDataProvider, default_assets
+from app.data.providers import BinanceProvider, KrakenProvider, OTCRegistry, TwelveDataProvider, default_assets, kraken_assets
+from app.spot.engine import PaperSpotBroker, SpotConfig, SpotEngine
 from app.engine import ai_engine as ai
 from app.execution.engine import ExecutionEngine
 from app.news.engine import NewsEngine
@@ -34,23 +35,35 @@ class Bot:
         self.offset_ms = 0
         self.state = BotState.STOPPED
         self.started_ms = None
-        self.providers = {"binance": BinanceProvider(self.now)}
-        if settings.twelvedata_key:
-            self.providers["twelvedata"] = TwelveDataProvider(settings.twelvedata_key, self.now)
+        self.spot = settings.mode == "kraken_spot"
         self.otc = OTCRegistry()
-        self.assets = {a.symbol: a for a in default_assets(bool(settings.twelvedata_key))}
+        if self.spot:
+            self.providers = {"kraken": KrakenProvider(settings.kraken_interval, self.now)}
+            self.assets = {a.symbol: a for a in kraken_assets()}
+        else:
+            self.providers = {"binance": BinanceProvider(self.now)}
+            if settings.twelvedata_key:
+                self.providers["twelvedata"] = TwelveDataProvider(settings.twelvedata_key, self.now)
+            self.assets = {a.symbol: a for a in default_assets(bool(settings.twelvedata_key))}
         self.candles: dict = {}
         self.live: dict = {}
         self.calibration_report: dict = {}
         self.news = NewsEngine()
         self.brokers = BrokerRegistry()
-        self.paper = PaperBroker(settings.initial_capital)
-        self.brokers.register(self.paper)
         self.risk = RiskManager(RiskConfig(**settings.risk_defaults()))
-        self.guard = DataGuard(GuardConfig(max_latency_ms=settings.max_latency_ms))
+        self.guard = DataGuard(GuardConfig(max_latency_ms=settings.max_latency_ms, max_silence_ms=30_000))
         self.recent_decisions = deque(maxlen=300)
-        self.engine = ExecutionEngine(self.paper, self.risk, self.guard, record=self._record, on_trade=self._on_trade,
-                                      news_block=lambda a, t: self.news.risk_events(a, t, settings.news_block_min), otc_registry=self.otc)
+        block = lambda a, t: self.news.risk_events(a, t, settings.news_block_min)
+        if self.spot:
+            self.spot_cfg = SpotConfig(fee_rate=settings.spot_fee, stake=settings.spot_stake)
+            self.paper = PaperSpotBroker(settings.initial_capital, settings.spot_fee)
+            self.engine = SpotEngine(self.paper, self.risk, self.guard, self.spot_cfg, record=self._record, on_trade=self._on_trade,
+                                     news_block=block, otc_registry=self.otc, interval_min=settings.kraken_interval)
+        else:
+            self.paper = PaperBroker(settings.initial_capital)
+            self.engine = ExecutionEngine(self.paper, self.risk, self.guard, record=self._record, on_trade=self._on_trade,
+                                          news_block=block, otc_registry=self.otc)
+        self.brokers.register(self.paper)
         self.engine.active = False
         self._stop = asyncio.Event()
         self._tasks: list = []
@@ -61,13 +74,15 @@ class Bot:
 
     async def sync_clock(self):
         import httpx
-        for url in ("https://api.binance.com/api/v3/time", "https://data-api.binance.vision/api/v3/time"):
+        urls = ["https://api.kraken.com/0/public/Time"] if self.spot else ["https://api.binance.com/api/v3/time", "https://data-api.binance.vision/api/v3/time"]
+        for url in urls:
             try:
                 async with httpx.AsyncClient(timeout=8) as cli:
                     t0 = time.time() * 1000
                     j = (await cli.get(url)).json()
                     t1 = time.time() * 1000
-                self.offset_ms = int(j["serverTime"] - (t0 + t1) / 2)
+                server = j["result"]["unixtime"] * 1000 if "result" in j else j["serverTime"]
+                self.offset_ms = int(server - (t0 + t1) / 2)
                 return
             except Exception as e:
                 log.warning("sincronização de relógio falhou em %s: %s", url, e)
@@ -90,7 +105,7 @@ class Bot:
             if a.market == MarketType.OTC or p is None:
                 continue
             try:
-                self.candles[sym] = await p.history(a, 1000)
+                self.candles[sym] = await p.history(a, 720 if self.spot else 1000)
                 self.calibration_report[sym] = await asyncio.to_thread(self.engine.seed_calibration, a, self.candles[sym])
             except Exception as e:
                 log.error("histórico %s: %s", a.display, e)
@@ -113,8 +128,8 @@ class Bot:
         if C and C[-1].t >= c.t:
             return
         C.append(c)
-        if len(C) > 1500:
-            del C[:len(C) - 1500]
+        if len(C) > 1000:
+            del C[:len(C) - 1000]
         await asyncio.to_thread(self.engine.on_candle_closed, a, list(C), self.providers[a.source_id], self.now())
 
     async def _maintenance(self):
@@ -194,6 +209,7 @@ class Bot:
                 F = ai.build_features(C[-400:])
                 i = len(F.C) - 1
                 row.update({"regime": ai.regime(F, i), "rsi": F.rsi[i], "adx": F.adx[i], "atr": F.atr[i],
-                            "trend_5m": ai.tf5_direction(F, i), "change_1h": (C[-1].c / C[-61].c - 1) if len(C) > 61 else None})
+                            "trend_5m": ai.tf5_direction(F, i), "htf_minutes": F.htf_minutes, "interval_min": F.base_minutes,
+                            "change_1h": (C[-1].c / C[-1 - 60 // F.base_minutes].c - 1) if len(C) > 60 // F.base_minutes + 1 else None})
             rows.append(row)
         return rows

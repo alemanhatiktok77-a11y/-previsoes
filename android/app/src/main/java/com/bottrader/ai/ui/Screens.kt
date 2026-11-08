@@ -64,7 +64,7 @@ fun DashboardScreen(ui: UiState, vm: MainViewModel) {
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
         Kpi("Operações", d.trades_total.toString(), Modifier.weight(1f))
-        Kpi("Acerto", pct(d.win_rate, 0), Modifier.weight(1f), if ((d.win_rate ?: 0.0) >= d.breakeven) C.Up else C.Ink)
+        Kpi("Acerto", pct(d.win_rate, 0), Modifier.weight(1f), if (d.breakeven != null && (d.win_rate ?: 0.0) >= d.breakeven) C.Up else C.Ink)
         Kpi("Ativos", d.assets_monitored.toString(), Modifier.weight(1f))
     }
     RobotButtons(d.state, vm)
@@ -92,7 +92,8 @@ fun DashboardScreen(ui: UiState, vm: MainViewModel) {
         if (d.last_trades.isEmpty()) Note("Nenhum ainda.")
         d.last_trades.forEach { TradeRow(it) }
     }
-    Note("Paper trading: resultados simulados com preços reais. Execução financeira real desativada.")
+    Note(if (d.mode == "kraken_spot") "Modo Kraken à vista (simulação): preços reais da Kraken, compras simuladas com stop, alvo e taxas reais. Nenhuma ordem real é enviada."
+         else "Paper trading: resultados simulados com preços reais. Execução financeira real desativada.")
 }
 
 fun latColor(ms: Long?) = when { ms == null -> C.Mut; ms > 2000 -> C.Down; ms > 800 -> C.Warn; else -> C.Up }
@@ -136,13 +137,22 @@ fun RobotButtons(state: String, vm: MainViewModel) {
 fun TradeRow(t: TradeDto) {
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (t.direction == "CALL") "▲ CALL" else "▼ PUT", color = if (t.direction == "CALL") C.Up else C.Down, fontWeight = FontWeight.ExtraBold)
+            Text(if (t.kind == "spot") "▲ COMPRA" else if (t.direction == "CALL") "▲ CALL" else "▼ PUT",
+                color = if (t.direction == "CALL") C.Up else C.Down, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.width(8.dp)); Text(sym(t.asset), color = C.Ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Tag(t.status, statusColor(t.status))
         }
-        Note("${t.expiry_min} min · entrada ${hhmmss(t.entry_t)}${t.entry_price?.let { " @ $it" } ?: ""}${t.exit_price?.let { " → $it" } ?: ""}" +
-                (if (t.status == "WIN" || t.status == "LOSS") " · ${if (t.pnl >= 0) "+" else ""}${money(t.pnl)}" else ""))
-        Note("${t.strategy} · confiança ${t.confidence?.let { pct(it) + " (n=${t.confidence_n})" } ?: "não calibrada"} · força ${t.model_strength}")
+        if (t.kind == "spot") {
+            Note("Entrada ${hhmmss(t.entry_t)}${t.entry_price?.let { " @ $it" } ?: ""} · ${money(t.stake)} € · máx. ${t.expiry_min} min")
+            if (t.stop_price != null) Note("Stop ${"%.6g".format(t.stop_price)} · Alvo ${"%.6g".format(t.target_price ?: 0.0)}")
+            if (t.exit_price != null) Note("Saída ${t.exit_price} por ${t.exit_reason} · ${if (t.pnl >= 0) "+" else ""}${money(t.pnl)} € (taxas ${money(t.fees)} €)",
+                if (t.pnl >= 0) C.Up else C.Down)
+            Note("${t.strategy} · acerto histórico ${t.confidence?.let { pct(it) + " (n=${t.confidence_n})" } ?: "—"} · força ${t.model_strength}")
+        } else {
+            Note("${t.expiry_min} min · entrada ${hhmmss(t.entry_t)}${t.entry_price?.let { " @ $it" } ?: ""}${t.exit_price?.let { " → $it" } ?: ""}" +
+                    (if (t.status == "WIN" || t.status == "LOSS") " · ${if (t.pnl >= 0) "+" else ""}${money(t.pnl)}" else ""))
+            Note("${t.strategy} · confiança ${t.confidence?.let { pct(it) + " (n=${t.confidence_n})" } ?: "não calibrada"} · força ${t.model_strength}")
+        }
         if (t.cancel_reason.isNotBlank()) Note("Cancelada: ${t.cancel_reason}", C.Warn)
     }
     HorizontalDivider(color = C.Line)
@@ -284,21 +294,29 @@ fun StatsScreen(ui: UiState) {
     val s = ui.stats ?: return Loading()
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
         Kpi("Operações", s.n.toString(), Modifier.weight(1f))
-        Kpi("Acerto real", pct(s.rate), Modifier.weight(1f), if ((s.rate ?: 0.0) >= s.breakeven) C.Up else C.Down)
-        Kpi("Equilíbrio", pct(s.breakeven), Modifier.weight(1f))
+        Kpi("Acerto real", pct(s.rate), Modifier.weight(1f))
+        if (s.breakeven != null) Kpi("Equilíbrio", pct(s.breakeven), Modifier.weight(1f))
+        else Kpi("Resultado", (if (s.pnl_total >= 0) "+" else "") + money(s.pnl_total), Modifier.weight(1f), if (s.pnl_total >= 0) C.Up else C.Down)
     }
+    if (s.mode == "kraken_spot") Note("Taxas pagas: ${money(s.fees_total)} €. No modo à vista o que importa é o resultado em euros depois das taxas, não só a taxa de acerto.")
     s.ci?.let { Note("Intervalo de confiança 95%: ${pct(it[0])} a ${pct(it[1])}. Abaixo de ~100 operações o resultado ainda é muito incerto.") }
     s.deterioration?.let { Panel("Detecção de deterioração") {
         Note("Últimas 30: ${pct(it.recent)} · anteriores: ${pct(it.before)}", if (it.degraded) C.Down else C.Mut)
         if (it.degraded) Note("⚠ Desempenho caiu abaixo do ponto de equilíbrio — revise ou pause o robô.", C.Down) } }
     if (s.equity.size > 1) Panel("Curva de capital (simulado)") { Equity(s.equity.map { it.equity }) }
-    GroupPanel("Por ativo", s.by_asset, s.breakeven); GroupPanel("Por estratégia", s.by_strategy, s.breakeven)
-    GroupPanel("Por expiração", s.by_expiry, s.breakeven); GroupPanel("Por horário", s.by_hour, s.breakeven)
+    val be = s.breakeven ?: 0.5
+    GroupPanel("Por ativo", s.by_asset, be); GroupPanel("Por estratégia", s.by_strategy, be)
+    GroupPanel("Por expiração / tempo máximo", s.by_expiry, be); GroupPanel("Por horário", s.by_hour, be)
     Panel("Backtest walk-forward (fora da amostra)") {
         if (s.backtest.isEmpty()) Note("Aguardando histórico dos ativos.")
         s.backtest.forEach { (asset, bt) ->
             Text(sym(asset) + " · ${bt.signals} sinais no histórico", color = C.Ink, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
-            bt.walk_forward.forEach { (exp, wf) -> Line("  $exp min", if (wf.tested > 0) "${pct(wf.rate)} em ${wf.tested}" else "sem operações qualificadas") }
+            bt.summary?.takeIf { it.n > 0 }?.let { sm -> Line("  Todas as entradas (${sm.n})", "acerto ${pct(sm.win_rate)} · média ${pct(sm.mean_pct, 2)} após taxas", if ((sm.mean_pct ?: 0.0) > 0) C.Up else C.Down) }
+            bt.walk_forward.forEach { (exp, wf) ->
+                val label = if (exp == "spot") "  Fora da amostra" else "  $exp min"
+                Line(label, if (wf.tested > 0) "${pct(wf.rate)} em ${wf.tested}" + (wf.mean_pct?.let { " · média ${pct(it, 2)}" } ?: "") else "nenhuma entrada qualificada",
+                    if ((wf.mean_pct ?: wf.rate?.minus(0.55) ?: 0.0) > 0) C.Up else C.Mut)
+            }
         }
         Spacer(Modifier.height(6.dp)); Note("Calibrado só com blocos anteriores e testado no bloco seguinte — sem dados futuros.")
     }
@@ -365,7 +383,10 @@ fun SettingsScreen(ui: UiState, vm: MainViewModel) {
     Panel("Servidor") {
         Line("Endereço", ui.server)
         Line("Criptografia", if (vm.isSecure) "HTTPS ✓" else "HTTP sem criptografia", if (vm.isSecure) C.Up else C.Warn)
-        s?.let { Line("Banco de dados", it.database); Line("Redis", if (it.redis) "ativo" else "não configurado"); Line("Forex (Twelve Data)", if (it.twelvedata_configured) "configurado" else "sem chave") }
+        s?.let { Line("Modo", if (it.mode == "kraken_spot") "Kraken à vista (simulação)" else "Opções binárias (simulação)")
+            it.spot?.let { sp -> Line("Velas", "${sp.interval_min} min"); Line("Valor por compra", "${money(sp.stake)} €")
+                Line("Taxa por lado", pct(sp.fee_rate, 2)); Line("Stop / Alvo", "${sp.stop_atr}× / ${sp.target_atr}× ATR"); Line("Tempo máximo", "${sp.max_bars} velas") }
+            Line("Banco de dados", it.database); Line("Redis", if (it.redis) "ativo" else "não configurado"); Line("Forex (Twelve Data)", if (it.twelvedata_configured) "configurado" else "sem chave") }
     }
     s?.let { Panel("Corretoras") {
         it.brokers.forEach { b -> Line(b.name, if (b.real_money) "dinheiro real" else "simulação") }

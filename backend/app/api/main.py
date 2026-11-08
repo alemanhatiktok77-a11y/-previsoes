@@ -107,11 +107,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         trades = repo.list_trades(1000)
         closed = [t for t in trades if t["status"] in ("WIN", "LOSS")]
         wins = sum(t["status"] == "WIN" for t in closed)
-        lat = [v for p in bot.providers.values() for v in p.latency_ms.values() if p.source_id == "binance"]
-        return {**bot.status(), "capital": bot.paper.balance(), "initial_capital": bot.paper.initial,
+        lat = [v for p in bot.providers.values() for v in p.latency_ms.values() if p.source_id in ("binance", "kraken")]
+        return {**bot.status(), "mode": S.mode, "capital": bot.paper.balance(), "initial_capital": bot.paper.initial,
                 "pnl": round(sum(t["pnl"] for t in trades), 2), "trades_total": len(closed),
                 "open_trades": [t for t in trades if t["status"] in ("PENDING", "OPEN")],
-                "win_rate": wins / len(closed) if closed else None, "breakeven": 1 / (1 + bot.risk.cfg.payout),
+                "win_rate": wins / len(closed) if closed else None, "breakeven": None if bot.spot else 1 / (1 + bot.risk.cfg.payout),
                 "assets_monitored": sum(1 for a in bot.assets.values() if a.symbol in bot.candles),
                 "latency_ms": round(sum(lat) / len(lat)) if lat else None,
                 "last_trades": trades[:8], "connections": bot.connections(), "risk": bot.risk.snapshot()["state"]}
@@ -205,17 +205,19 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             run += t["pnl"]
             eq.append({"t": t["closed_ms"], "equity": round(run, 2)})
         recent, before = closed[-30:], closed[:-30]
+        be = 0.5 if bot.spot else 1 / (1 + bot.risk.cfg.payout)
         rr = lambda L: (sum(t["status"] == "WIN" for t in L) / len(L)) if L else None
         det = None
         if len(closed) >= 60:
-            det = {"recent": rr(recent), "before": rr(before), "degraded": rr(recent) < rr(before) - 0.1 and rr(recent) < 1 / (1 + bot.risk.cfg.payout)}
+            det = {"recent": rr(recent), "before": rr(before), "degraded": rr(recent) < rr(before) - 0.1 and rr(recent) < be}
         return {"n": len(closed), "wins": w, "rate": w / len(closed) if closed else None, "ci": ai.wilson(w, len(closed)) if closed else None,
-                "breakeven": 1 / (1 + bot.risk.cfg.payout),
+                "breakeven": None if bot.spot else 1 / (1 + bot.risk.cfg.payout), "mode": S.mode,
+                "pnl_total": round(sum(t["pnl"] for t in closed), 2), "fees_total": round(sum(t.get("fees", 0) for t in closed), 2),
                 "by_asset": group(lambda t: t["asset"]), "by_strategy": group(lambda t: t["strategy"]),
                 "by_expiry": group(lambda t: f"{t['expiry_min']} min"),
                 "by_hour": group(lambda t: time.strftime("%H", time.gmtime(t["entry_t"] / 1000)) + "h UTC"),
                 "equity": eq, "deterioration": det,
-                "backtest": {sym: {"signals": r["signals"], "walk_forward": {str(k): {kk: vv for kk, vv in v.items() if kk != "folds"} for k, v in r["walk_forward"].items()}}
+                "backtest": {sym: {"signals": r["signals"], "summary": r.get("summary"), "walk_forward": {str(k): {kk: vv for kk, vv in v.items() if kk != "folds"} for k, v in r["walk_forward"].items()}}
                              for sym, r in bot.calibration_report.items()}}
 
     # ------------------------------------------------ risco
@@ -234,14 +236,16 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     @app.post("/paper/reset")
     def paper_reset(_: str = Depends(user)):
-        if any(t.status.value in ("PENDING", "OPEN") for t in bot.engine.trades):
+        if any(t.status.value in ("PENDING", "OPEN") for t in bot.engine.trades):  # noqa
             raise HTTPException(409, "há operações em andamento")
         bot.paper.reset()
         return {"capital": bot.paper.balance()}
 
     @app.get("/settings")
     def get_settings(_: str = Depends(user)):
-        return {"twelvedata_configured": bool(S.twelvedata_key), "redis": bool(S.redis_url), "database": S.database_url.split(":")[0],
+        return {"mode": S.mode, "spot": ({"fee_rate": bot.spot_cfg.fee_rate, "stop_atr": bot.spot_cfg.stop_atr, "target_atr": bot.spot_cfg.target_atr,
+                         "max_bars": bot.spot_cfg.max_bars, "stake": bot.spot_cfg.stake, "interval_min": S.kraken_interval} if bot.spot else None),
+                "twelvedata_configured": bool(S.twelvedata_key), "redis": bool(S.redis_url), "database": S.database_url.split(":")[0],
                 "max_latency_ms": S.max_latency_ms, "news_block_min": S.news_block_min, "brokers": bot.brokers.list(),
                 "real_execution": False, "real_execution_note": "Execução real desativada: nenhum adaptador oficial aprovado."}
 

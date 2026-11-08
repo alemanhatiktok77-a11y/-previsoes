@@ -36,6 +36,25 @@ jobs:
         tail -c 60000 backend-tests.log > notes.txt || echo "sem log" > notes.txt
         gh release create bot-ci-backend --target "$GITHUB_SHA" --title "CI backend ($GITHUB_SHA)" --notes-file notes.txt --prerelease
 
+  kraken-real:
+    runs-on: ubuntu-24.04
+    defaults: {run: {working-directory: backend}}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with: {python-version: '3.12'}
+    - run: pip install -r requirements.txt
+    - name: Verificação com dados reais da Kraken
+      run: python scripts/kraken_smoke.py 2>&1 | tee ../kraken.log; exit ${PIPESTATUS[0]}
+    - name: Publicar relatório
+      if: always()
+      working-directory: .
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        gh release delete kraken-real-report -y --cleanup-tag || true
+        tail -c 60000 kraken.log > notes.txt || echo "sem log" > notes.txt
+        gh release create kraken-real-report --target "$GITHUB_SHA" --title "Relatório com dados reais da Kraken" --notes-file notes.txt --prerelease
+
   android:
     runs-on: ubuntu-24.04
     steps:

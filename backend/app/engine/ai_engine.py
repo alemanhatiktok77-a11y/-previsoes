@@ -33,7 +33,9 @@ class Features:
     c5: list            # velas de 5 min
     e5_fast: list
     e5_slow: list
-    idx5: list          # índice da vela de 5 min que contém cada vela de 1 min
+    idx5: list          # índice da vela do timeframe superior que contém cada vela base
+    htf_minutes: int = 5
+    base_minutes: int = 1
 
 
 def build_features(C: Sequence[Candle]) -> Features:
@@ -41,7 +43,10 @@ def build_features(C: Sequence[Candle]) -> Features:
     close = [x.c for x in C]
     _, _, hist = ind.macd(close)
     mid, up, lo = ind.bollinger(close)
-    c5 = ind.aggregate(C, 5)
+    base_min = max(1, (C[1].t - C[0].t) // 60_000) if len(C) > 1 else 1
+    htf = 5 if base_min == 1 else base_min * 4          # 1m→5m; 15m→60m; 5m→20m
+    c5 = ind.aggregate(C, htf)
+    span = htf * 60_000
     pos5 = {x.t: i for i, x in enumerate(c5)}
     vols = [x.v for x in C]
     c5close = [x.c for x in c5]
@@ -50,7 +55,7 @@ def build_features(C: Sequence[Candle]) -> Features:
         rsi=ind.rsi(close), macd_hist=hist, bb_mid=mid, bb_up=up, bb_lo=lo,
         atr=ind.atr(C), adx=ind.adx(C), vol_ma=ind.sma(vols, 20), has_volume=any(v > 0 for v in vols),
         c5=c5, e5_fast=ind.ema(c5close, 9), e5_slow=ind.ema(c5close, 21),
-        idx5=[pos5[x.t // 300_000 * 300_000] for x in C],
+        idx5=[pos5[x.t // span * span] for x in C], htf_minutes=htf, base_minutes=base_min,
     )
 
 
@@ -117,7 +122,7 @@ class TrendFollowing(Strategy):
         v.append(Vote("EMAs 9/21/50", d, 2.0, f"EMAs alinhadas {'para cima' if up else 'para baixo'} · ADX {F.adx[i]:.0f}"))
         t5 = tf5_direction(F, i)
         if t5:
-            v.append(Vote("Timeframe 5m", t5, 1.0, f"EMA 9 {'acima' if t5 > 0 else 'abaixo'} da EMA 21 no 5 min"))
+            v.append(Vote("Timeframe 5m", t5, 1.0, f"EMA 9 {'acima' if t5 > 0 else 'abaixo'} da EMA 21 no gráfico de {F.htf_minutes} min"))
         h, hp = F.macd_hist[i], F.macd_hist[i - 1]
         if h is not None and hp is not None and (h > 0) == (d > 0) and abs(h) >= abs(hp):
             v.append(Vote("MACD", d, 1.0, "Histograma do MACD a favor e crescendo"))
@@ -198,7 +203,7 @@ class Breakout(Strategy):
             v.append(Vote("Volume", d, 1.0, f"Volume {x.v / F.vol_ma[i]:.1f}× a média"))
         t5 = tf5_direction(F, i)
         if t5:
-            v.append(Vote("Timeframe 5m", t5, 0.75, "Direção do 5 min"))
+            v.append(Vote("Timeframe 5m", t5, 0.75, f"Direção do gráfico de {F.htf_minutes} min"))
         return v
 
 
