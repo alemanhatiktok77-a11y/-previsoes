@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previsões de Jogos</title>
+<style>
+  :root { --bg:#0e1116; --card:#171c24; --line:#252c38; --txt:#e8edf3; --mut:#8b96a8;
+          --home:#2fbf71; --draw:#e0b341; --away:#4a90e2; --live:#ff4d4f; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--txt); font-family:system-ui,Roboto,sans-serif; font-size:15px; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); padding:14px 14px 0; border-bottom:1px solid var(--line); }
+  h1 { font-size:20px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  h1 small { font-size:12px; color:var(--mut); font-weight:400; margin-left:auto; }
+  .tabs { display:flex; margin-top:12px; }
+  .tab { flex:1; padding:11px 0; text-align:center; background:none; border:none; color:var(--mut);
+         font-size:15px; font-weight:600; border-bottom:3px solid transparent; }
+  .tab.on { color:var(--txt); border-color:var(--home); }
+  .tab .n { background:var(--live); color:#fff; border-radius:10px; padding:1px 7px; font-size:12px; margin-left:4px; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:12px 14px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { flex:none; padding:7px 13px; border-radius:18px; border:1px solid var(--line); background:var(--card);
+          color:var(--txt); font-size:13px; }
+  .chip.on { background:var(--home); border-color:var(--home); color:#06210f; font-weight:700; }
+  main { padding:0 12px 30px; }
+  .day { color:var(--mut); font-size:13px; font-weight:600; margin:16px 4px 8px; }
+  .day::first-letter { text-transform:uppercase; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:10px; }
+  .meta { display:flex; justify-content:space-between; font-size:12px; color:var(--mut); margin-bottom:10px; }
+  .live { color:var(--live); font-weight:700; }
+  .live::before { content:"● "; animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+  .match { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
+  .team { display:flex; flex-direction:column; align-items:center; text-align:center; gap:5px; font-size:13px; font-weight:600; }
+  .team img { width:36px; height:36px; object-fit:contain; }
+  .sc { font-size:26px; font-weight:800; min-width:74px; text-align:center; }
+  .sc.vs { font-size:15px; color:var(--mut); font-weight:600; }
+  .bar { display:flex; height:8px; border-radius:4px; overflow:hidden; margin:12px 0 6px; }
+  .bar div { height:100%; }
+  .pcts { display:flex; justify-content:space-between; font-size:12px; }
+  .pcts b { font-size:14px; }
+  .tip { margin-top:10px; padding:8px 10px; border-radius:9px; background:#10261a; color:#8fe3b4; font-size:13px; }
+  .more { display:none; margin-top:10px; border-top:1px solid var(--line); padding-top:10px;
+          display:none; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; }
+  .card.open .more { display:grid; }
+  .kv { background:#11161d; border-radius:8px; padding:8px; }
+  .kv span { display:block; color:var(--mut); font-size:11px; margin-bottom:2px; }
+  .msg { text-align:center; color:var(--mut); padding:50px 20px; line-height:1.5; }
+  .spin { width:28px; height:28px; border:3px solid var(--line); border-top-color:var(--home); border-radius:50%;
+          margin:50px auto; animation:r 0.8s linear infinite; }
+  @keyframes r { to { transform:rotate(360deg); } }
+  .foot { text-align:center; color:var(--mut); font-size:11px; padding:10px 20px 20px; }
+  button.retry { margin-top:12px; padding:9px 18px; border-radius:9px; border:none; background:var(--home); font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚽ Previsões <small id="upd"></small></h1>
+  <div class="tabs">
+    <button class="tab on" data-tab="live">Ao vivo<span class="n" id="nlive" hidden></span></button>
+    <button class="tab" data-tab="next">Próximos</button>
+  </div>
+</header>
+<div class="chips" id="chips"></div>
+<main id="list"><div class="spin"></div></main>
+<div class="foot">Previsões estatísticas (modelo de Poisson). Não são garantia de resultado.</div>
+
+<script src="model.js"></script>
+<script>
+const LEAGUES = [
+  { id:'all', name:'Todas' },
+  { id:'bra.1', name:'Brasileirão A' },
+  { id:'bra.2', name:'Série B' },
+  { id:'conmebol.libertadores', name:'Libertadores' },
+  { id:'conmebol.sudamericana', name:'Sul-Americana' },
+  { id:'uefa.champions', name:'Champions' },
+  { id:'eng.1', name:'Premier League' },
+  { id:'esp.1', name:'La Liga' },
+  { id:'ita.1', name:'Serie A' },
+  { id:'ger.1', name:'Bundesliga' },
+  { id:'fra.1', name:'Ligue 1' },
+  { id:'por.1', name:'Portugal' },
+];
+const SB = 'https://site.api.espn.com/apis/site/v2/sports/soccer/';
+const ST = 'https://site.api.espn.com/apis/v2/sports/soccer/';
+
+let tab = 'live', league = 'all', timer = null;
+const standCache = {};
+const opened = new Set();
+
+const $ = s => document.querySelector(s);
+const pt = f => f ? String(f).replace(/W/g,'V').replace(/D/g,'E').replace(/L/g,'D') : '—';
+const pct = x => Math.round(x * 100) + '%';
+
+function ymd(d) { return d.toISOString().slice(0,10).replace(/-/g,''); }
+
+async function getJSON(url) {
+  const r = await fetch(url, { cache:'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function strengths(lg) {
+  if (standCache[lg] !== undefined) return standCache[lg];
+  try {
+    const j = await getJSON(ST + lg + '/standings');
+    const groups = j.children && j.children.length ? j.children : [j];
+    const rows = [];
+    groups.forEach(g => (g.standings && g.standings.entries || []).forEach(e => {
+      const st = {}; (e.stats || []).forEach(s => st[s.name] = s.value);
+      if (st.gamesPlayed > 0) rows.push({ id:e.team.id, gp:st.gamesPlayed, gf:st.pointsFor||0, ga:st.pointsAgainst||0 });
+    }));
+    standCache[lg] = rows.length >= 4 ? Model.buildStrengths(rows) : null;
+  } catch (e) { standCache[lg] = null; }
+  return standCache[lg];
+}
+
+async function scoreboard(lg, from, to) {
+  const j = await getJSON(SB + lg + '/scoreboard?dates=' + ymd(from) + '-' + ymd(to));
+  return (j.events || []).map(ev => ({ ev, lg, lgName: (j.leagues && j.leagues[0] && j.leagues[0].abbreviation) || LEAGUES.find(l=>l.id===lg).name }));
+}
+
+function minuteOf(st) {
+  const d = (st.type && st.type.shortDetail) || '';
+  if (/HT|Intervalo|Half/i.test(d) || (st.type && st.type.name === 'STATUS_HALFTIME')) return 45;
+  const m = parseInt(st.displayClock, 10);
+  if (!isNaN(m)) return Math.min(m, 90);
+  return st.clock ? Math.min(Math.floor(st.clock / 60), 90) : 0;
+}
+
+async function toMatch(x) {
+  const c = x.ev.competitions[0];
+  const H = c.competitors.find(t => t.homeAway === 'home'), A = c.competitors.find(t => t.homeAway === 'away');
+  const st = x.ev.status, state = st.type.state; // pre | in | post
+  const s = await strengths(x.lg);
+  const team = t => ({ id:t.team.id, name:t.team.shortDisplayName || t.team.displayName, logo:t.team.logo, form:t.form,
+                       rec:(t.records && t.records[0] && t.records[0].summary) || '' });
+  const h = team(H), a = team(A);
+  const { lh, la } = Model.expectedGoals(h, a, s);
+  const sh = +H.score || 0, sa = +A.score || 0;
+  const live = state === 'in';
+  const p = Model.predict(lh, la, live ? sh : 0, live ? sa : 0, live ? minuteOf(st) : 0);
+  return { id:x.ev.id, date:new Date(x.ev.date), state, detail:st.type.shortDetail, clock:st.displayClock,
+           lgName:x.lgName, h, a, sh, sa, p, basis: s ? 'tabela' : 'forma recente' };
+}
+
+function tipFor(m) {
+  const p = m.p, best = Math.max(p.home, p.draw, p.away);
+  let t;
+  if (best === p.home) t = 'Vitória do ' + m.h.name;
+  else if (best === p.away) t = 'Vitória do ' + m.a.name;
+  else t = 'Empate';
+  if (best < 0.45) {
+    if (p.home + p.draw > 0.7 && p.home >= p.away) t = 'Dupla chance: ' + m.h.name + ' ou empate';
+    else if (p.away + p.draw > 0.7) t = 'Dupla chance: ' + m.a.name + ' ou empate';
+  }
+  return t + ' · ' + (p.over25 >= 0.5 ? 'Mais' : 'Menos') + ' de 2,5 gols';
+}
+
+function card(m) {
+  const live = m.state === 'in', post = m.state === 'post';
+  const hr = m.date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const status = live ? '<span class="live">' + (m.clock && m.clock !== "0'" ? m.clock : m.detail) + '</span>'
+               : post ? 'Encerrado' : 'Pré-jogo';
+  const center = (live || post) ? '<div class="sc">' + m.sh + ' – ' + m.sa + '</div>' : '<div class="sc vs">' + hr + '</div>';
+  const img = t => t.logo ? '<img src="' + t.logo + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<img alt="" style="visibility:hidden">';
+  const p = m.p;
+  return '<div class="card' + (opened.has(m.id) ? ' open' : '') + '" data-id="' + m.id + '">' +
+    '<div class="meta"><span>' + m.lgName + '</span>' + status + '</div>' +
+    '<div class="match"><div class="team">' + img(m.h) + m.h.name + '</div>' + center +
+    '<div class="team">' + img(m.a) + m.a.name + '</div></div>' +
+    '<div class="bar"><div style="width:' + p.home*100 + '%;background:var(--home)"></div>' +
+    '<div style="width:' + p.draw*100 + '%;background:var(--draw)"></div>' +
+    '<div style="width:' + p.away*100 + '%;background:var(--away)"></div></div>' +
+    '<div class="pcts"><span style="color:var(--home)">Casa <b>' + pct(p.home) + '</b></span>' +
+    '<span style="color:var(--draw)">Empate <b>' + pct(p.draw) + '</b></span>' +
+    '<span style="color:var(--away)">Fora <b>' + pct(p.away) + '</b></span></div>' +
+    '<div class="tip">💡 ' + tipFor(m) + '</div>' +
+    '<div class="more">' +
+      '<div class="kv"><span>' + (live ? 'Placar final provável' : 'Placar mais provável') + '</span>' + p.score + ' (' + pct(p.scoreProb) + ')</div>' +
+      '<div class="kv"><span>Mais de 2,5 gols</span>' + pct(p.over25) + '</div>' +
+      '<div class="kv"><span>Ambos marcam</span>' + pct(p.btts) + '</div>' +
+      '<div class="kv"><span>Gols esperados (jogo)</span>' + p.xgH.toFixed(2) + ' x ' + p.xgA.toFixed(2) + '</div>' +
+      (m.h.form || m.a.form ? '<div class="kv"><span>Forma ' + m.h.name + '</span>' + pt(m.h.form) + '</div>' +
+                               '<div class="kv"><span>Forma ' + m.a.name + '</span>' + pt(m.a.form) + '</div>' : '') +
+      '<div class="kv" style="grid-column:1/3"><span>Base do cálculo</span>' + m.basis + (live ? ' + placar e minuto atual' : '') + '</div>' +
+    '</div></div>';
+}
+
+let loading = false;
+async function load(showSpinner) {
+  if (loading) return; loading = true;
+  const list = $('#list');
+  if (showSpinner) list.innerHTML = '<div class="spin"></div>';
+  try {
+    const now = new Date();
+    const from = new Date(now); if (tab === 'live') from.setDate(from.getDate() - 1);
+    const to = new Date(now); to.setDate(to.getDate() + (tab === 'live' ? 1 : 7));
+    const ids = league === 'all' ? LEAGUES.slice(1).map(l => l.id) : [league];
+    const res = await Promise.allSettled(ids.map(id => scoreboard(id, from, to)));
+    const ok = res.filter(r => r.status === 'fulfilled');
+    if (!ok.length) throw new Error('sem conexão');
+    let evs = ok.flatMap(r => r.value);
+    const nLive = evs.filter(x => x.ev.status.type.state === 'in').length;
+    const nl = $('#nlive'); nl.hidden = !nLive; nl.textContent = nLive;
+    evs = evs.filter(x => tab === 'live' ? x.ev.status.type.state === 'in' : x.ev.status.type.state === 'pre');
+    const matches = (await Promise.all(evs.map(toMatch))).sort((a, b) => a.date - b.date);
+    if (!matches.length) {
+      list.innerHTML = '<div class="msg">' + (tab === 'live'
+        ? 'Nenhum jogo ao vivo agora.<br>Veja a aba <b>Próximos</b>.'
+        : 'Nenhum jogo nos próximos 7 dias nessa competição.') + '</div>';
+    } else {
+      let html = '', lastDay = '';
+      matches.forEach(m => {
+        const day = m.date.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'short' });
+        if (tab === 'next' && day !== lastDay) { html += '<div class="day">' + day + '</div>'; lastDay = day; }
+        html += card(m);
+      });
+      list.innerHTML = html;
+    }
+    $('#upd').textContent = 'atualizado ' + now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  } catch (e) {
+    list.innerHTML = '<div class="msg">Não foi possível carregar os jogos.<br>Verifique sua internet.<br>' +
+      '<button class="retry" onclick="load(true)">Tentar de novo</button></div>';
+  }
+  loading = false;
+}
+
+function schedule() {
+  clearInterval(timer);
+  timer = setInterval(() => load(false), tab === 'live' ? 30000 : 300000);
+}
+
+$('#chips').innerHTML = LEAGUES.map(l => '<button class="chip' + (l.id === league ? ' on' : '') + '" data-lg="' + l.id + '">' + l.name + '</button>').join('');
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  league = b.dataset.lg;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === b));
+  load(true);
+});
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  tab = t.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  load(true); schedule();
+}));
+$('#list').addEventListener('click', e => {
+  const c = e.target.closest('.card'); if (!c) return;
+  c.classList.toggle('open');
+  c.classList.contains('open') ? opened.add(c.dataset.id) : opened.delete(c.dataset.id);
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(false); });
+
+load(true); schedule();
+</script>
+</body>
+</html>
