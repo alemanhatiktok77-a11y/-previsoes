@@ -205,7 +205,8 @@ class KrakenProvider(MarketDataProvider):
 
     @classmethod
     def parse_ws(cls, msg: dict) -> list:
-        """Converte uma mensagem do canal ohlc em [(símbolo, Candle, timestamp_ms)]."""
+        """Converte uma mensagem do canal ohlc em [(símbolo, Candle, timestamp_ms)].
+        O timestamp de cada vela é o horário do ÚLTIMO negócio dela — em velas antigas do snapshot isso não mede atraso."""
         if msg.get("channel") != "ohlc" or msg.get("type") not in ("snapshot", "update"):
             return []
         out = []
@@ -243,12 +244,21 @@ class KrakenProvider(MarketDataProvider):
                             continue
                         if msg.get("method") == "subscribe" and not msg.get("success", True):
                             raise RuntimeError(msg.get("error", "falha na inscrição"))
-                        for ext, c, ts in self.parse_ws(msg):
+                        rows = self.parse_ws(msg)
+                        if msg.get("type") == "snapshot":
+                            # snapshot = histórico recente: só guarda a vela mais nova de cada símbolo, sem gerar eventos
+                            for ext, c, ts in rows:
+                                sym = by_ext.get(ext)
+                                if sym and (sym not in current or c.t >= current[sym].t):
+                                    current[sym] = c
+                                    self.last_event_ms[sym] = now
+                            continue
+                        for ext, c, ts in rows:
                             sym = by_ext.get(ext)
                             if not sym:
                                 continue
                             self.last_event_ms[sym] = now
-                            if ts:
+                            if ts:   # atualização ao vivo: horário do negócio na Kraken → recebido aqui
                                 self.latency_ms[sym] = max(0, now - ts)
                             prev = current.get(sym)
                             if prev and c.t > prev.t:              # começou vela nova → a anterior fechou

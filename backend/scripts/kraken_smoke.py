@@ -59,7 +59,7 @@ async def main():
 
     async def cb(sym, c, closed, ts):
         stats["updates"] += 1
-        if sym in prov.latency_ms:
+        if not closed and sym in prov.latency_ms:
             stats["lat"].append(prov.latency_ms[sym])
         if closed:
             stats["closed"].append((sym, c.t, c.c))
@@ -73,6 +73,7 @@ async def main():
     p(f"conectado: {prov.last_error or 'sim'} · reconexões {prov.reconnects} · atualizações recebidas {stats['updates']}")
     if L:
         p(f"latência (horário do evento na Kraken → recebido): mediana {L[len(L) // 2]} ms · p90 {L[int(len(L) * 0.9)]} ms · máx {L[-1]} ms")
+    p("(o relógio do runner do GitHub pode ter desvio; a latência é medida entre o horário do negócio na Kraken e a chegada)")
     p(f"velas fechadas detectadas: {len(stats['closed'])} → " + ", ".join(f"{s} {time.strftime('%H:%M', time.gmtime(t / 1000))} {c}" for s, t, c in stats["closed"][:6]))
     ok = stats["updates"] > 0
     p("\nRESULTADO: " + ("OK — API REST e WebSocket da Kraken funcionando com o código do robô" if ok else "FALHA no WebSocket"))
