@@ -45,8 +45,7 @@ public class MainActivity extends Activity {
                     HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                     c.setConnectTimeout(15000);
                     c.setReadTimeout(20000);
-                    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) PrevisoesApp/1.1");
-                    c.setRequestProperty("Accept", "application/json");
+                    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36");
                     int code = c.getResponseCode();
                     InputStream in = code < 400 ? c.getInputStream() : c.getErrorStream();
                     if (in != null) {

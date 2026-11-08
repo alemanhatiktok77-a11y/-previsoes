@@ -129,9 +129,25 @@ async function strengths(lg) {
   return standCache[lg];
 }
 
+// Tenta vários formatos de pedido, porque o servidor às vezes recusa o período inteiro
+const rangeOk = {};
 async function scoreboard(lg, from, to) {
-  const j = await getJSON(SB + lg + '/scoreboard?dates=' + ymd(from) + '-' + ymd(to));
-  return (j.events || []).map(ev => ({ ev, lg, lgName: (j.leagues && j.leagues[0] && j.leagues[0].abbreviation) || LEAGUES.find(l=>l.id===lg).name }));
+  const base = SB + lg + '/scoreboard';
+  const name = j => (j.leagues && j.leagues[0] && (j.leagues[0].abbreviation || j.leagues[0].name)) || LEAGUES.find(l=>l.id===lg).name;
+  const wrap = j => (j.events || []).map(ev => ({ ev, lg, lgName: name(j) }));
+  if (rangeOk[lg] !== false) {
+    try { const j = await getJSON(base + '?dates=' + ymd(from) + '-' + ymd(to)); rangeOk[lg] = true; return wrap(j); }
+    catch (e) { rangeOk[lg] = false; }
+  }
+  // um dia por vez
+  const days = [];
+  for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) days.push(ymd(d));
+  const res = await Promise.allSettled(days.map(day => getJSON(base + '?dates=' + day)));
+  const seen = new Set(), out = [];
+  res.forEach(r => { if (r.status === 'fulfilled') wrap(r.value).forEach(x => { if (!seen.has(x.ev.id)) { seen.add(x.ev.id); out.push(x); } }); });
+  if (res.some(r => r.status === 'fulfilled')) return out;
+  // último recurso: rodada atual, sem data
+  return wrap(await getJSON(base));
 }
 
 function minuteOf(st) {
