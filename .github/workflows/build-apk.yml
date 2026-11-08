@@ -1,5 +1,7 @@
 name: Gerar APK NutriFit
 on: [push, workflow_dispatch]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -10,5 +12,11 @@ jobs:
     - uses: gradle/actions/setup-gradle@v4
       with: {gradle-version: '8.7'}
     - run: gradle assembleDebug --no-daemon
+    - run: cp app/build/outputs/apk/debug/app-debug.apk NutriFit.apk
     - uses: actions/upload-artifact@v4
-      with: {name: NutriFit-APK, path: app/build/outputs/apk/debug/app-debug.apk}
+      with: {name: NutriFit-APK, path: NutriFit.apk}
+    - name: Publicar link de download
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        gh release delete nutrifit-latest -y --cleanup-tag || true
+        gh release create nutrifit-latest NutriFit.apk --target "$GITHUB_SHA" --title "NutriFit (última versão)" --notes "Baixe o NutriFit.apk e instale no Android."
