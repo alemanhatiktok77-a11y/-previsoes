@@ -1,0 +1,8 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- folha estilizada -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M36,72C36,50 50,36 74,34C74,58 60,72 40,74Z"/>
+    <path android:strokeColor="#12A17A" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M40,70C48,60 56,52 66,44"/>
+</vector>

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>NutriFit</title>
+<style>
+:root{
+  --bg:#f4f6f5; --card:#fff; --ink:#15211c; --mut:#6b7a73; --line:#e6ebe8;
+  --pri:#12a17a; --pri2:#0c7d5f; --priL:#e3f5ee; --acc:#ff8a4c; --blue:#3a86ff; --pink:#e85d8c; --yel:#f2b84b; --red:#e5484d;
+  --sh:0 1px 2px rgba(16,40,30,.05),0 4px 14px rgba(16,40,30,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;font-size:15px;line-height:1.35}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink)}
+.screen{padding:16px 16px 96px;max-width:560px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 16px}
+.top h1{font-size:22px;font-weight:750;letter-spacing:-.3px}
+.top p{color:var(--mut);font-size:13px;margin-top:2px}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--priL);color:var(--pri2);display:grid;place-items:center;font-weight:800;font-size:17px}
+.card{background:var(--card);border-radius:18px;box-shadow:var(--sh);padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.card h2 small{font-size:12px;color:var(--mut);font-weight:500}
+.mut{color:var(--mut)} .sm{font-size:12.5px} .b{font-weight:700}
+.row{display:flex;align-items:center;gap:10px} .between{justify-content:space-between} .wrap{flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--pri);color:#fff;font-weight:650;border-radius:12px;padding:12px 16px;width:100%;font-size:15px}
+.btn:active{background:var(--pri2)}
+.btn.sec{background:var(--priL);color:var(--pri2)} .btn.ghost{background:#f0f2f1;color:var(--ink)} .btn.red{background:#fdecec;color:var(--red)}
+.btn.sm{padding:8px 12px;font-size:13px;width:auto;border-radius:10px}
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:650;background:var(--priL);color:var(--pri2)}
+.pill.o{background:#fff1e8;color:#c45a1c} .pill.b{background:#e8f0ff;color:#2058c4} .pill.r{background:#fdecec;color:var(--red)} .pill.y{background:#fdf4e1;color:#a67412}
+/* anel de calorias */
+.ringWrap{display:flex;align-items:center;gap:16px}
+.ring{position:relative;width:132px;height:132px;flex:none}
+.ring svg{transform:rotate(-90deg)}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .c b{font-size:26px;letter-spacing:-.5px} .ring .c span{font-size:11.5px;color:var(--mut)}
+.kstats{flex:1;display:flex;flex-direction:column;gap:10px}
+.kstat{display:flex;align-items:center;gap:10px}
+.kstat i{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-style:normal;font-size:16px}
+.kstat div span{display:block;font-size:12px;color:var(--mut)} .kstat div b{font-size:15px}
+.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.macro span{font-size:12px;color:var(--mut)} .macro b{display:block;font-size:13.5px;margin:2px 0 6px}
+.bar{height:7px;border-radius:5px;background:#edf1ef;overflow:hidden}.bar>div{height:100%;border-radius:5px}
+/* água */
+.cups{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.cup{width:30px;height:38px;border-radius:5px 5px 9px 9px;border:2px solid #cfe3f9;background:#fff;position:relative;overflow:hidden}
+.cup.f{background:linear-gradient(#7fb8ff,#3a86ff);border-color:#3a86ff}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:36px;height:36px;border-radius:10px;background:#eef3f1;font-size:20px;font-weight:700;color:var(--pri2)}
+/* listas */
+.item{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:none}
+.item .grow{flex:1;min-width:0}
+.item .t{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .s{font-size:12.5px;color:var(--mut)}
+.x{width:30px;height:30px;border-radius:8px;color:#9aa8a1;font-size:18px;flex:none}
+.x:active{background:#f3f5f4}
+.add{color:var(--pri2);font-weight:650;font-size:14px;padding:10px 0 2px;display:flex;align-items:center;gap:6px}
+.meal h2 .k{font-size:13px;color:var(--mut);font-weight:600}
+.daynav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;box-shadow:var(--sh);padding:6px;margin-bottom:14px}
+.daynav button{width:40px;height:40px;border-radius:10px;font-size:20px;color:var(--pri2)}
+.daynav b{font-size:15px}
+/* navegação inferior */
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;padding:6px 4px calc(8px + env(safe-area-inset-bottom));z-index:20}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#8a978f;font-weight:600;padding:4px 0}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--pri)}
+/* folha (modal) */
+.sheetBg{position:fixed;inset:0;background:rgba(10,25,18,.45);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.sheetBg.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;max-height:92vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;animation:up .22s ease}
+@keyframes up{from{transform:translateY(40px);opacity:.6}}
+.sheet .hd{padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.sheet .hd b{font-size:17px}
+.sheet .bd{padding:14px 16px 20px;overflow-y:auto}
+label.f{display:block;margin-bottom:12px}
+label.f span{display:block;font-size:12.5px;color:var(--mut);font-weight:600;margin-bottom:5px}
+.inp{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:12px;background:#fafbfa;font-size:15px;outline:none}
+.inp:focus{border-color:var(--pri);background:#fff}
+.seg{display:flex;background:#eef2f0;border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;padding:9px;border-radius:9px;font-weight:650;font-size:13.5px;color:var(--mut)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 12px;border-radius:20px;background:#eef2f0;font-size:13px;font-weight:600;color:var(--mut)}
+.chip.on{background:var(--pri);color:#fff}
+.food{padding:11px 4px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.food:active{background:#f6f8f7}
+/* treino */
+.prog{display:flex;gap:12px;align-items:center}
+.prog .ic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;font-size:24px;flex:none}
+.ex{padding:12px 0;border-top:1px solid var(--line)}
+.ex:first-child{border-top:none}
+.player{position:fixed;inset:0;background:linear-gradient(160deg,#0f8f6c,#0b5f49);color:#fff;z-index:60;display:none;flex-direction:column;padding:22px 20px calc(24px + env(safe-area-inset-bottom))}
+.player.on{display:flex}
+.player .pt{display:flex;justify-content:space-between;align-items:center;font-size:14px;opacity:.9}
+.player .main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:12px}
+.player h3{font-size:28px;letter-spacing:-.4px}
+.player .big{font-size:76px;font-weight:800;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.player .desc{font-size:15px;opacity:.88;max-width:420px;line-height:1.5}
+.player .pbar{height:6px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin:10px 0 18px}
+.player .pbar div{height:100%;background:#fff}
+.player .btn{background:#fff;color:var(--pri2);font-size:17px;padding:16px}
+.player .btn.gh{background:rgba(255,255,255,.15);color:#fff}
+/* gráfico */
+.chart svg{width:100%;height:auto;display:block}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th{color:var(--mut);font-weight:600;font-size:12px;text-align:right;padding:6px 4px}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t td{padding:9px 4px;border-top:1px solid var(--line);text-align:right}
+.dn{color:var(--pri2);font-weight:650}.up{color:var(--red);font-weight:650}
+.tip{background:linear-gradient(135deg,#e3f5ee,#f1fbf7);border:1px solid #cdeee0}
+.warn{background:#fff7ec;border:1px solid #fbe2bd;color:#8a5a12;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.hero{background:linear-gradient(150deg,#13a57d,#0b6e54);color:#fff;border-radius:22px;padding:24px 20px;margin-bottom:16px}
+.hero h1{font-size:26px;letter-spacing:-.4px;margin-bottom:6px}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#15211c;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:90;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}
+.kv{background:#f6f8f7;border-radius:12px;padding:10px 12px}
+.kv span{display:block;font-size:11.5px;color:var(--mut);font-weight:600}.kv b{font-size:17px}
+.empty{color:var(--mut);font-size:13.5px;padding:6px 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav id="nav"></nav>
+<div class="sheetBg" id="sheetBg"><div class="sheet"><div class="hd"><b id="shT"></b><button class="x" onclick="closeSheet()">✕</button></div><div class="bd" id="shB"></div></div></div>
+<div class="player" id="player"></div>
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+/* ================= estado ================= */
+const KEY = 'nutrifit_v1';
+let S = load();
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || fresh(); }catch(e){ return fresh(); } }
+function fresh(){ return { profile:null, weights:[], measures:[], days:{}, custom:[] }; }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+const r0 = n => Math.round(n), r1 = n => Math.round(n*10)/10;
+const fmt = (n,d=1) => (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('pt-BR');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function dkey(d){ d = d || new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fromKey(k){ const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
+function dlabel(k){ const t = dkey(), y = dkey(new Date(Date.now()-864e5));
+  if (k===t) return 'Hoje'; if (k===y) return 'Ontem';
+  return fromKey(k).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}); }
+function dshort(k){ return fromKey(k).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); }
+function day(k){ k = k || dkey(); if(!S.days[k]) S.days[k] = { meals:{}, water:0, acts:[] }; return S.days[k]; }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),1800); }
+
+/* ================= cálculos ================= */
+const ACT_LEVELS = [ [1.2,'Sedentária','pouco ou nenhum exercício'], [1.375,'Levemente ativa','exercício 1–3x/semana'], [1.55,'Moderadamente ativa','exercício 3–5x/semana'], [1.725,'Muito ativa','exercício 6–7x/semana'] ];
+function curWeight(){ const w = S.weights.slice().sort((a,b)=>a.d<b.d?-1:1); return w.length ? w[w.length-1].kg : S.profile.weight0; }
+function age(){ const p=S.profile; if(!p.birth) return p.age||30; const b=new Date(p.birth), n=new Date(); let a=n.getFullYear()-b.getFullYear(); if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate())) a--; return a; }
+function bmiCat(b){ if(b<18.5) return ['Abaixo do peso','y']; if(b<25) return ['Peso adequado','']; if(b<30) return ['Sobrepeso','o']; if(b<35) return ['Obesidade grau I','r']; if(b<40) return ['Obesidade grau II','r']; return ['Obesidade grau III','r']; }
+function calc(){
+  const p = S.profile, w = curWeight(), h = p.height, a = age(), F = p.sex === 'F';
+  const bmr = 10*w + 6.25*h - 5*a + (F ? -161 : 5);
+  const tdee = bmr * p.activity;
+  const floor = F ? 1200 : 1500;
+  const deficit = p.pace === 'lento' ? 0.12 : p.pace === 'rapido' ? 0.25 : 0.2;
+  let target = Math.max(tdee*(1-deficit), floor);
+  if (w <= p.goal) target = tdee; // meta atingida: manutenção
+  target = Math.round(target/10)*10;
+  const protein = Math.round(Math.min(1.6*w, 1.6*p.goal + 25, 160));
+  const fat = Math.round(target*0.28/9);
+  const carb = Math.max(0, Math.round((target - protein*4 - fat*9)/4));
+  const water = Math.round(w*35/250)*250;
+  const bmi = w / Math.pow(h/100, 2);
+  const weekly = (tdee - target)*7/7700; // kg/semana
+  const left = Math.max(0, w - p.goal);
+  const weeks = weekly > 0 ? left/weekly : null;
+  return { w, bmr, tdee, target, protein, fat, carb, water, bmi, weekly, left, weeks, floor };
+}
+function dayTotals(k){
+  const d = S.days[k] || { meals:{}, water:0, acts:[] }; let kcal=0,p=0,c=0,f=0;
+  Object.values(d.meals).forEach(list => list.forEach(it => { kcal+=it.kcal*it.q; p+=it.p*it.q; c+=it.c*it.q; f+=it.f*it.q; }));
+  const burned = (d.acts||[]).reduce((s,a)=>s+a.kcal,0);
+  return { kcal, p, c, f, burned, water:d.water||0 };
+}
+
+/* ================= navegação ================= */
+let tab = 'home', foodDay = dkey();
+const ICONS = {
+  home:'<svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  food:'<svg viewBox="0 0 24 24"><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M17 21V3c-2.2 1.2-3.5 3.8-3.5 7v3H17"/></svg>',
+  train:'<svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>',
+  prog:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 16l4-5 3 3 5-7"/><circle cx="18" cy="7" r="1.2"/></svg>',
+  prof:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>',
+};
+function renderNav(){
+  const items = [['home','Início'],['food','Alimentação'],['train','Treinos'],['prog','Progresso'],['prof','Perfil']];
+  $('#nav').style.display = S.profile ? 'flex' : 'none';
+  $('#nav').innerHTML = items.map(([k,l]) => `<button class="${tab===k?'on':''}" onclick="go('${k}')">${ICONS[k]}${l}</button>`).join('');
+}
+function go(t){ tab = t; render(); window.scrollTo(0,0); }
+function render(){
+  renderNav();
+  if (!S.profile) return renderOnboarding();
+  ({home:renderHome, food:renderFood, train:renderTrain, prog:renderProg, prof:renderProfile})[tab]();
+}
+
+/* ================= onboarding / perfil ================= */
+let draft = {};
+function profileForm(p){
+  p = p || {};
+  draft = { sex:p.sex||'F', activity:p.activity||1.375, pace:p.pace||'normal' };
+  return `
+  <label class="f"><span>Nome</span><input class="inp" id="pName" value="${esc(p.name||'')}" placeholder="Ex.: Ana"></label>
+  <label class="f"><span>Sexo biológico (para o cálculo do metabolismo)</span>
+    <div class="seg" id="sexSeg"><button data-v="F" class="${draft.sex==='F'?'on':''}">Feminino</button><button data-v="M" class="${draft.sex==='M'?'on':''}">Masculino</button></div></label>
+  <div class="grid2">
+    <label class="f"><span>Data de nascimento</span><input class="inp" id="pBirth" type="date" value="${p.birth||''}"></label>
+    <label class="f"><span>Altura (cm)</span><input class="inp" id="pH" inputmode="decimal" value="${p.height||''}" placeholder="165"></label>
+    <label class="f"><span>Peso atual (kg)</span><input class="inp" id="pW" inputmode="decimal" value="${p.weight0 ? r1(S.weights.length?curWeight():p.weight0) : ''}" placeholder="78,5"></label>
+    <label class="f"><span>Peso desejado (kg)</span><input class="inp" id="pG" inputmode="decimal" value="${p.goal||''}" placeholder="65"></label>
+  </div>
+  <label class="f"><span>Nível de atividade</span><select class="inp" id="pAct">${ACT_LEVELS.map(a=>`<option value="${a[0]}" ${a[0]==draft.activity?'selected':''}>${a[1]} — ${a[2]}</option>`).join('')}</select></label>
+  <label class="f"><span>Ritmo de emagrecimento</span>
+    <div class="seg" id="paceSeg"><button data-v="lento" class="${draft.pace==='lento'?'on':''}">Suave</button><button data-v="normal" class="${draft.pace==='normal'?'on':''}">Recomendado</button><button data-v="rapido" class="${draft.pace==='rapido'?'on':''}">Intenso</button></div></label>
+  <div id="pErr"></div>`;
+}
+function bindProfileForm(){
+  document.querySelectorAll('#sexSeg button').forEach(b => b.onclick = () => { draft.sex=b.dataset.v; document.querySelectorAll('#sexSeg button').forEach(x=>x.classList.toggle('on',x===b)); });
+  document.querySelectorAll('#paceSeg button').forEach(b => b.onclick = () => { draft.pace=b.dataset.v; document.querySelectorAll('#paceSeg button').forEach(x=>x.classList.toggle('on',x===b)); });
+}
+function readProfile(){
+  const name = $('#pName').value.trim(), birth = $('#pBirth').value, h = num($('#pH').value), w = num($('#pW').value), g = num($('#pG').value);
+  const err = m => { $('#pErr').innerHTML = `<div class="warn">${m}</div>`; return null; };
+  if (!name) return err('Informe o nome.');
+  if (!birth) return err('Informe a data de nascimento.');
+  if (!h || h < 120 || h > 230) return err('Altura inválida (em centímetros, ex.: 165).');
+  if (!w || w < 35 || w > 300) return err('Peso atual inválido.');
+  if (!g || g < 35 || g > 300) return err('Peso desejado inválido.');
+  const gBmi = g / Math.pow(h/100, 2);
+  if (gBmi < 18.5) return err(`Esse peso desejado fica abaixo da faixa saudável para ${fmt(h,0)} cm. O mínimo recomendado é cerca de ${fmt(18.5*Math.pow(h/100,2),1)} kg.`);
+  const a = new Date().getFullYear() - new Date(birth).getFullYear();
+  if (a < 18) return err('Este app é destinado a adultos (18+). Para menores, procure um nutricionista ou pediatra.');
+  return { name, birth, height:h, weight:w, goal:g, sex:draft.sex, activity:+$('#pAct').value, pace:draft.pace };
+}
+function renderOnboarding(){
+  $('#app').innerHTML = `<div class="screen">
+    <div class="hero"><div style="font-size:34px;margin-bottom:8px">🥗</div><h1>Bem-vinda ao NutriFit</h1>
+    <p style="opacity:.9">Alimentação, treinos, peso e medidas em um só lugar. Vamos calcular suas metas personalizadas.</p></div>
+    <div class="card">${profileForm()}<button class="btn" id="startBtn">Calcular minhas metas</button></div>
+    <p class="sm mut" style="text-align:center;padding:0 10px">Os dados ficam salvos só neste celular.</p></div>`;
+  bindProfileForm();
+  $('#startBtn').onclick = () => {
+    const r = readProfile(); if (!r) return;
+    S.profile = { name:r.name, birth:r.birth, height:r.height, weight0:r.weight, goal:r.goal, sex:r.sex, activity:r.activity, pace:r.pace, start:dkey() };
+    S.weights = [{ d:dkey(), kg:r.weight }];
+    save(); tab='home'; render(); toast('Metas calculadas! 🎉');
+  };
+}
+
+/* ================= início ================= */
+function ring(val, max, color, size=132, sw=12){
+  const r = (size-sw)/2, C = 2*Math.PI*r, pct = Math.max(0, Math.min(1, max ? val/max : 0));
+  return `<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="#edf1ef" stroke-width="${sw}" fill="none"/>
+  <circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}"/></svg>`;
+}
+function macroBar(label, val, max, color){
+  return `<div class="macro"><span>${label}</span><b>${r0(val)} / ${max} g</b><div class="bar"><div style="width:${Math.min(100,val/max*100)}%;background:${color}"></div></div></div>`;
+}
+function renderHome(){
+  const c = calc(), k = dkey(), t = dayTotals(k), p = S.profile;
+  const remain = c.target - t.kcal + t.burned, over = remain < 0;
+  const hr = new Date().getHours(), greet = hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite';
+  const start = p.weight0, lost = start - c.w, total = start - p.goal, pct = total > 0 ? Math.max(0, Math.min(100, lost/total*100)) : 100;
+  const cups = Math.round(c.water/250), filled = Math.round(t.water/250);
+  const tip = TIPS[(new Date().getDate()) % TIPS.length];
+  const nextProg = PROGRAMS[weekWorkouts().length % 2];
+  $('#app').innerHTML = `<div class="screen">
+    <div class="top"><div><h1>${greet}, ${esc(p.name.split(' ')[0])}!</h1><p>${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p></div>
+      <div class="avatar" onclick="go('prof')">${esc(p.name[0].toUpperCase())}</div></div>
+
+    <div class="card"><h2>Calorias de hoje <small>meta ${c.target} kcal</small></h2>
+      <div class="ringWrap">
+        <div class="ring">${ring(t.kcal, c.target + t.burned, over ? 'var(--acc)' : 'var(--pri)')}
+          <div class="c"><b style="color:${over?'var(--acc)':'inherit'}">${Math.abs(r0(remain))}</b><span>${over?'kcal acima':'kcal restantes'}</span></div></div>
+        <div class="kstats">
+          <div class="kstat"><i style="background:#e3f5ee">🍽️</i><div><span>Consumido</span><b>${r0(t.kcal)} kcal</b></div></div>
+          <div class="kstat"><i style="background:#fff1e8">🔥</i><div><span>Gasto em exercícios</span><b>${r0(t.burned)} kcal</b></div></div>
+          <div class="kstat"><i style="background:#e8f0ff">🎯</i><div><span>Meta diária</span><b>${c.target} kcal</b></div></div>
+        </div></div>
+      <div class="macros">${macroBar('Proteínas', t.p, c.protein, 'var(--pink)')}${macroBar('Carboidratos', t.c, c.carb, 'var(--yel)')}${macroBar('Gorduras', t.f, c.fat, 'var(--blue)')}</div>
+      <div style="margin-top:14px"><button class="btn sec" onclick="foodDay=dkey();go('food')">+ Registrar refeição</button></div>
+    </div>
+
+    <div class="card"><h2>Água <small>${fmt(t.water/1000,2)} L de ${fmt(c.water/1000,2)} L</small></h2>
+      <div class="cups">${Array.from({length:Math.max(cups,filled)},(_,i)=>`<div class="cup ${i<filled?'f':''}"></div>`).join('')}</div>
+      <div class="row between"><span class="sm mut">1 copo = 250 ml</span>
+      <div class="stepper"><button onclick="water(-250)">−</button><button onclick="water(250)">+</button></div></div></div>
+
+    <div class="card"><h2>Peso <small>${lost>=0?'perdeu':'ganhou'} ${fmt(Math.abs(lost))} kg</small></h2>
+      <div class="grid3" style="text-align:center">
+        <div class="kv"><span>Início</span><b>${fmt(start)}</b></div>
+        <div class="kv" style="background:var(--priL)"><span>Atual</span><b>${fmt(c.w)}</b></div>
+        <div class="kv"><span>Meta</span><b>${fmt(p.goal)}</b></div></div>
+      <div class="bar" style="margin:14px 0 6px;height:10px"><div style="width:${pct}%;background:linear-gradient(90deg,#12a17a,#38d39f)"></div></div>
+      <div class="row between sm mut"><span>${r0(pct)}% do objetivo</span><span>${c.left>0?'faltam '+fmt(c.left)+' kg':'Meta atingida! 🎉'}</span></div>
+      <div style="margin-top:14px"><button class="btn ghost" onclick="addWeightSheet()">Registrar peso</button></div></div>
+
+    <div class="card"><h2>Treino sugerido <small>${weekWorkouts().length} treino(s) nesta semana</small></h2>
+      <div class="prog"><div class="ic" style="background:#fff1e8">🏋️‍♀️</div><div class="grow" style="flex:1"><div class="b">${nextProg.name}</div>
+      <div class="sm mut">${nextProg.min} min · ${nextProg.items.length} exercícios · sem equipamento</div></div></div>
+      <div style="margin-top:14px"><button class="btn" onclick="openProgram('${nextProg.id}')">Ver treino</button></div></div>
+
+    <div class="card tip"><div class="row" style="align-items:flex-start"><span style="font-size:22px">💡</span><div><div class="b" style="margin-bottom:3px">Dica do dia</div><div class="sm">${tip}</div></div></div></div>
+  </div>`;
+}
+function water(ml){ const d = day(dkey()); d.water = Math.max(0, (d.water||0) + ml); save(); render(); }
+
+/* ================= alimentação ================= */
+const MEALS = [['cafe','Café da manhã','☕'],['lanche1','Lanche da manhã','🍎'],['almoco','Almoço','🍛'],['lanche2','Lanche da tarde','🥪'],['jantar','Jantar','🍲'],['ceia','Ceia','🌙']];
+function renderFood(){
+  const c = calc(), t = dayTotals(foodDay), d = S.days[foodDay] || { meals:{} };
+  $('#app').innerHTML = `<div class="screen">
+    <div class="top"><div><h1>Alimentação</h1><p>Registre o que comeu em cada refeição</p></div></div>
+    <div class="daynav"><button onclick="shiftDay(-1)">‹</button><b>${dlabel(foodDay)}</b><button onclick="shiftDay(1)" ${foodDay>=dkey()?'disabled style="opacity:.3"':''}>›</button></div>
+    <div class="card"><div class="row between"><div><div class="sm mut">Consumido</div><div style="font-size:24px;font-weight:800">${r0(t.kcal)} <span class="sm mut" style="font-weight:600">/ ${c.target} kcal</span></div></div>
+      <span class="pill ${t.kcal>c.target+t.burned?'o':''}">${t.kcal>c.target+t.burned?'Acima da meta':'Dentro da meta'}</span></div>
+      <div class="bar" style="margin:12px 0 4px;height:9px"><div style="width:${Math.min(100,t.kcal/(c.target+t.burned)*100)}%;background:${t.kcal>c.target+t.burned?'var(--acc)':'var(--pri)'}"></div></div>
+      <div class="row between sm mut" style="margin-top:8px"><span>P ${r0(t.p)}g</span><span>C ${r0(t.c)}g</span><span>G ${r0(t.f)}g</span></div></div>
+    ${MEALS.map(([k,n,ic]) => { const list = d.meals[k] || []; const kc = list.reduce((s,i)=>s+i.kcal*i.q,0);
+      return `<div class="card meal"><h2><span>${ic} ${n}</span><span class="k">${r0(kc)} kcal</span></h2>
+        ${list.map((it,i)=>`<div class="item"><div class="grow"><div class="t">${esc(it.name)}</div><div class="s">${fmt(it.q)} × ${esc(it.portion)} · ${r0(it.kcal*it.q)} kcal</div></div><button class="x" onclick="delFood('${k}',${i})">✕</button></div>`).join('')}
+        <button class="add" onclick="foodSheet('${k}')">＋ Adicionar alimento</button></div>`; }).join('')}
+    <div class="card"><h2>📋 Cardápio sugerido <small>~${c.target} kcal/dia</small></h2>
+      <p class="sm mut" style="margin-bottom:10px">Ideias de refeições equilibradas para a sua meta. Escolha uma opção por refeição.</p>
+      <button class="btn sec" onclick="menuSheet()">Ver cardápio</button></div>
+  </div>`;
+}
+function shiftDay(n){ const d = fromKey(foodDay); d.setDate(d.getDate()+n); const k = dkey(d); if (k > dkey()) return; foodDay = k; render(); }
+function delFood(meal, i){ const d = day(foodDay); d.meals[meal].splice(i,1); save(); render(); }
+let fsMeal = 'cafe', fsCat = 'Todos', fsQ = '';
+function allFoods(){ return S.custom.map((f,i)=>({...f, id:'c'+i, cat:'Meus alimentos'})).concat(FOODS); }
+function foodSheet(meal){
+  fsMeal = meal; fsQ = ''; fsCat = 'Todos';
+  openSheet('Adicionar · ' + MEALS.find(m=>m[0]===meal)[1], `
+    <input class="inp" id="fsSearch" placeholder="🔍 Buscar alimento (ex.: frango, arroz)" oninput="fsQ=this.value;fsList()">
+    <div class="chips" id="fsCats" style="margin-top:10px"></div><div id="fsList"></div>
+    <button class="btn ghost" style="margin-top:12px" onclick="customFoodSheet()">＋ Criar alimento personalizado</button>`);
+  const cats = ['Todos'].concat(S.custom.length?['Meus alimentos']:[], [...new Set(FOODS.map(f=>f.cat))]);
+  $('#fsCats').innerHTML = cats.map(c=>`<button class="chip ${c===fsCat?'on':''}" data-c="${c}">${c}</button>`).join('');
+  $('#fsCats').onclick = e => { const b = e.target.closest('.chip'); if(!b) return; fsCat=b.dataset.c; document.querySelectorAll('#fsCats .chip').forEach(x=>x.classList.toggle('on',x===b)); fsList(); };
+  fsList();
+}
+function norm(s){ return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function fsList(){
+  const q = norm(fsQ.trim());
+  const list = allFoods().filter(f => (fsCat==='Todos'||f.cat===fsCat) && (!q || norm(f.name).includes(q))).slice(0,80);
+  $('#fsList').innerHTML = list.length ? list.map(f=>`<div class="food" onclick="qtySheet('${f.id}')"><div><div class="b" style="font-size:14.5px">${esc(f.name)}</div><div class="sm mut">${esc(f.portion)}</div></div><div style="text-align:right;flex:none"><b>${f.kcal}</b><div class="sm mut">kcal</div></div></div>`).join('')
+    : '<div class="empty">Nenhum alimento encontrado. Crie um personalizado abaixo.</div>';
+}
+let qty = 1, qFood = null;
+function qtySheet(id){
+  qFood = allFoods().find(f=>String(f.id)===String(id)); qty = 1;
+  openSheet(qFood.name, `<div class="sm mut" style="margin-bottom:14px">Porção: ${esc(qFood.portion)}</div>
+    <div class="row between card" style="box-shadow:none;background:#f6f8f7"><span class="b">Quantidade de porções</span>
+    <div class="stepper"><button onclick="setQty(-0.5)">−</button><b id="qv" style="min-width:36px;text-align:center;font-size:18px">1</b><button onclick="setQty(0.5)">+</button></div></div>
+    <div class="grid2" id="qMac" style="margin-bottom:16px"></div>
+    <button class="btn" onclick="addFood()">Adicionar à refeição</button>`);
+  setQty(0);
+}
+function setQty(d){ qty = Math.max(0.5, Math.min(10, qty + d)); $('#qv').textContent = fmt(qty);
+  $('#qMac').innerHTML = `<div class="kv"><span>Calorias</span><b>${r0(qFood.kcal*qty)} kcal</b></div><div class="kv"><span>Proteínas</span><b>${fmt(qFood.p*qty)} g</b></div><div class="kv"><span>Carboidratos</span><b>${fmt(qFood.c*qty)} g</b></div><div class="kv"><span>Gorduras</span><b>${fmt(qFood.f*qty)} g</b></div>`; }
+function addFood(){
+  const d = day(foodDay); (d.meals[fsMeal] = d.meals[fsMeal] || []).push({ name:qFood.name, portion:qFood.portion, kcal:qFood.kcal, p:qFood.p, c:qFood.c, f:qFood.f, q:qty });
+  save(); closeSheet(); render(); toast('Alimento adicionado ✓');
+}
+function customFoodSheet(){
+  openSheet('Alimento personalizado', `
+    <label class="f"><span>Nome</span><input class="inp" id="cfN" placeholder="Ex.: Bolo de cenoura da vó"></label>
+    <label class="f"><span>Porção</span><input class="inp" id="cfP" placeholder="Ex.: 1 fatia (80 g)"></label>
+    <div class="grid2"><label class="f"><span>Calorias (kcal)</span><input class="inp" id="cfK" inputmode="decimal"></label>
+    <label class="f"><span>Proteínas (g)</span><input class="inp" id="cfPr" inputmode="decimal" placeholder="0"></label>
+    <label class="f"><span>Carboidratos (g)</span><input class="inp" id="cfC" inputmode="decimal" placeholder="0"></label>
+    <label class="f"><span>Gorduras (g)</span><input class="inp" id="cfF" inputmode="decimal" placeholder="0"></label></div>
+    <p class="sm mut" style="margin-bottom:12px">Dica: esses valores estão na tabela nutricional da embalagem.</p>
+    <button class="btn" onclick="saveCustom()">Salvar e adicionar</button>`);
+}
+function saveCustom(){
+  const n = $('#cfN').value.trim(), k = num($('#cfK').value);
+  if (!n || k === null) return toast('Preencha nome e calorias');
+  const f = { name:n, portion:$('#cfP').value.trim()||'1 porção', kcal:r0(k), p:num($('#cfPr').value)||0, c:num($('#cfC').value)||0, f:num($('#cfF').value)||0 };
+  S.custom.push(f); save(); qtySheet('c'+(S.custom.length-1));
+}
+function menuSheet(){
+  const c = calc(), scale = c.target/1500;
+  const note = scale < 0.95 ? 'Sua meta é um pouco menor: reduza levemente as porções de carboidrato (arroz, pão, batata).'
+             : scale > 1.1 ? 'Sua meta é maior: pode aumentar um pouco as porções de carboidrato e proteína ou incluir a ceia.'
+             : 'As porções abaixo já estão próximas da sua meta.';
+  openSheet('Cardápio sugerido', `<div class="warn" style="background:#eef8f4;border-color:#cdeee0;color:#0c6b52">Base de ~1.500 kcal. ${note}</div>` +
+    Object.values(MENU).map(m=>`<div style="margin-bottom:14px"><div class="b" style="margin-bottom:6px">${m.t}</div>${m.opts.map((o,i)=>`<div class="item"><span class="pill" style="flex:none">${i+1}</span><div class="grow sm" style="white-space:normal">${o}</div></div>`).join('')}</div>`).join('') +
+    `<p class="sm mut">Salada e legumes podem ser à vontade. Tempere com ervas, limão e pouco sal. Evite frituras, doces e bebidas açucaradas no dia a dia.</p>`);
+}
+
+/* ================= treinos ================= */
+function weekWorkouts(){
+  const now = new Date(), start = new Date(now); start.setDate(now.getDate() - ((now.getDay()+6)%7)); const sk = dkey(start);
+  const out = []; Object.entries(S.days).forEach(([k,d]) => { if (k >= sk) (d.acts||[]).forEach(a => out.push({...a, k})); }); return out;
+}
+function renderTrain(){
+  const ww = weekWorkouts(), mins = ww.reduce((s,a)=>s+a.min,0), kc = ww.reduce((s,a)=>s+a.kcal,0);
+  const today = (S.days[dkey()]||{}).acts || [];
+  const lvlColor = { 'Iniciante':['#e3f5ee','🌱'], 'Intermediário':['#fff1e8','🔥'], 'Avançado':['#fdecec','⚡'] };
+  $('#app').innerHTML = `<div class="screen">
+    <div class="top"><div><h1>Treinos</h1><p>Exercícios em casa, sem equipamento</p></div></div>
+    <div class="card"><h2>Esta semana</h2><div class="grid3" style="text-align:center">
+      <div class="kv"><span>Treinos</span><b>${ww.length}</b></div><div class="kv"><span>Minutos</span><b>${mins}</b></div><div class="kv"><span>Kcal gastas</span><b>${r0(kc)}</b></div></div>
+      <p class="sm mut" style="margin-top:10px">Recomendação: pelo menos 150 minutos de atividade por semana.</p>
+      <div class="bar" style="margin-top:8px;height:9px"><div style="width:${Math.min(100,mins/150*100)}%;background:var(--acc)"></div></div></div>
+    <div class="card"><h2>Hoje</h2>
+      ${today.length ? today.map((a,i)=>`<div class="item"><div class="grow"><div class="t">${esc(a.name)}</div><div class="s">${a.min} min · ${r0(a.kcal)} kcal</div></div><button class="x" onclick="delAct(${i})">✕</button></div>`).join('') : '<div class="empty">Nenhuma atividade registrada hoje.</div>'}
+      <button class="add" onclick="actSheet()">＋ Registrar caminhada, corrida, academia…</button></div>
+    <h3 style="margin:18px 4px 10px;font-size:16px">Programas de treino</h3>
+    ${PROGRAMS.map(p=>`<div class="card" onclick="openProgram('${p.id}')"><div class="prog"><div class="ic" style="background:${lvlColor[p.level][0]}">${lvlColor[p.level][1]}</div>
+      <div style="flex:1"><div class="b">${p.name}</div><div class="sm mut" style="margin-top:2px">${p.min} min · ${p.items.length} exercícios · ~${r0(p.met*curWeight()*p.min/60)} kcal</div></div>
+      <span class="pill ${p.level==='Iniciante'?'':p.level==='Avançado'?'r':'o'}">${p.level}</span></div></div>`).join('')}
+    <p class="sm mut" style="padding:0 6px">Se sentir dor, tontura ou falta de ar, pare o exercício. Em caso de problemas de saúde, consulte um médico antes de começar.</p>
+  </div>`;
+}
+function delAct(i){ day(dkey()).acts.splice(i,1); save(); render(); }
+function actSheet(){
+  openSheet('Registrar atividade', `
+    <label class="f"><span>Atividade</span><select class="inp" id="aT">${ACTIVITIES.map((a,i)=>`<option value="${i}">${a[0]}</option>`).join('')}</select></label>
+    <label class="f"><span>Duração (minutos)</span><input class="inp" id="aM" inputmode="numeric" value="30"></label>
+    <div class="kv" style="margin-bottom:14px"><span>Gasto estimado</span><b id="aK">—</b></div>
+    <button class="btn" onclick="saveAct()">Salvar</button>`);
+  const upd = () => { const a = ACTIVITIES[$('#aT').value], m = num($('#aM').value)||0; $('#aK').textContent = r0(a[1]*curWeight()*m/60) + ' kcal'; };
+  $('#aT').onchange = upd; $('#aM').oninput = upd; upd();
+}
+function saveAct(){ const a = ACTIVITIES[$('#aT').value], m = num($('#aM').value);
+  if (!m || m <= 0 || m > 600) return toast('Informe a duração em minutos');
+  day(dkey()).acts.push({ name:a[0], min:r0(m), kcal:a[1]*curWeight()*m/60 }); save(); closeSheet(); render(); toast('Atividade registrada 💪'); }
+function openProgram(id){
+  const p = PROGRAMS.find(x=>x.id===id);
+  openSheet(p.name, `<div class="row wrap" style="margin-bottom:12px;gap:6px"><span class="pill">${p.level}</span><span class="pill b">${p.min} min</span><span class="pill o">~${r0(p.met*curWeight()*p.min/60)} kcal</span></div>
+    ${p.items.map(([e,s,r],i)=>`<div class="ex"><div class="row between"><b>${i+1}. ${EXERCISES[e].n}</b><span class="pill b" style="flex:none">${s}× ${r}</span></div>
+      <div class="sm mut" style="margin:3px 0">${EXERCISES[e].m}</div><div class="sm">${EXERCISES[e].d}</div></div>`).join('')}
+    <p class="sm mut" style="margin:8px 0 14px">Descanso de 30 segundos entre as séries.</p>
+    <button class="btn" onclick="startWorkout('${id}')">▶ Iniciar treino guiado</button>`);
+}
+/* --- treino guiado --- */
+let W = null;
+function startWorkout(id){
+  closeSheet(); const p = PROGRAMS.find(x=>x.id===id); const steps = [];
+  p.items.forEach(([e,s,r]) => { for (let i=1;i<=s;i++){ steps.push({ type:'ex', e, set:i, sets:s, r }); if (!(i===s && e===p.items[p.items.length-1][0])) steps.push({ type:'rest', sec:30 }); } });
+  W = { p, steps, i:0, t0:Date.now(), timer:null, left:0, paused:false };
+  $('#player').classList.add('on'); playStep();
+}
+function playStep(){
+  clearInterval(W.timer); const st = W.steps[W.i]; if (!st) return finishWorkout();
+  const nextEx = W.steps.slice(W.i+1).find(s=>s.type==='ex');
+  const prog = W.i / W.steps.length * 100;
+  const timed = st.type==='rest' || /^\d+s$/.test(st.r);
+  W.left = st.type==='rest' ? st.sec : timed ? parseInt(st.r) : 0; W.paused = false;
+  const ex = st.type==='ex' ? EXERCISES[st.e] : null;
+  $('#player').innerHTML = `<div class="pt"><button onclick="quitWorkout()" style="color:#fff;font-size:15px">✕ Sair</button><span>${W.p.name}</span></div>
+    <div class="pbar"><div style="width:${prog}%"></div></div>
+    <div class="main">${st.type==='rest'
+      ? `<div style="font-size:15px;opacity:.85;text-transform:uppercase;letter-spacing:1px">Descanso</div><div class="big" id="pt">${W.left}</div><div class="desc">A seguir: <b>${nextEx?EXERCISES[nextEx.e].n:'fim'}</b></div>`
+      : `<div style="font-size:14px;opacity:.85;text-transform:uppercase;letter-spacing:1px">Série ${st.set} de ${st.sets}</div><h3>${ex.n}</h3>
+         <div class="big" id="pt">${timed ? W.left : st.r.split(' ')[0]}</div><div style="opacity:.85;margin-top:-10px">${timed?'segundos':(st.r.includes(' ')?st.r.split(' ').slice(1).join(' ')+' · ':'')+'repetições'}</div>
+         <div class="desc">${ex.d}</div>`}</div>
+    <div class="row" style="gap:10px">${timed?`<button class="btn gh" style="width:40%" onclick="pauseW()" id="pb">Pausar</button>`:''}
+      <button class="btn" onclick="nextW()">${st.type==='rest'?'Pular descanso':timed?'Pular':'Feito ✓'}</button></div>`;
+  if (timed) W.timer = setInterval(() => { if (W.paused) return; W.left--; const el = $('#pt'); if (el) el.textContent = Math.max(0,W.left); if (W.left <= 0) { beep(); nextW(); } }, 1000);
+}
+function pauseW(){ W.paused = !W.paused; $('#pb').textContent = W.paused ? 'Continuar' : 'Pausar'; }
+function nextW(){ W.i++; playStep(); }
+function quitWorkout(){ clearInterval(W.timer);
+  const mins = Math.round((Date.now()-W.t0)/60000);
+  if (mins >= 3) logWorkout(mins); // registra treinos parciais com 3+ min
+  $('#player').classList.remove('on'); W = null; render(); }
+function finishWorkout(){
+  clearInterval(W.timer); const mins = Math.max(1, Math.round((Date.now()-W.t0)/60000)); const kc = logWorkout(mins);
+  $('#player').innerHTML = `<div class="main"><div style="font-size:64px">🏆</div><h3>Treino concluído!</h3>
+    <div class="desc">${mins} minutos · ~${r0(kc)} kcal gastas.<br>Registrado no seu dia. Parabéns pela dedicação!</div></div>
+    <button class="btn" onclick="$('#player').classList.remove('on');W=null;render()">Concluir</button>`;
+}
+function logWorkout(mins){ const kc = W.p.met*curWeight()*mins/60; day(dkey()).acts.push({ name:W.p.name, min:mins, kcal:kc }); save(); return kc; }
+function beep(){ try{ const a = new (window.AudioContext||window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value = 880; g.gain.value = .15; o.start(); o.stop(a.currentTime+.25); }catch(e){} if (navigator.vibrate) navigator.vibrate(200); }
+
+/* ================= progresso ================= */
+const MEAS = [['waist','Cintura'],['abdomen','Abdômen'],['hip','Quadril'],['chest','Busto/peito'],['arm','Braço'],['thigh','Coxa']];
+function renderProg(){
+  const c = calc(), [cat, cc] = bmiCat(c.bmi), ws = S.weights.slice().sort((a,b)=>a.d<b.d?-1:1);
+  const ms = S.measures.slice().sort((a,b)=>a.d<b.d?-1:1), first = ms[0], last = ms[ms.length-1];
+  $('#app').innerHTML = `<div class="screen">
+    <div class="top"><div><h1>Progresso</h1><p>Peso, medidas e evolução</p></div></div>
+    <div class="card"><h2>Peso <button class="btn sm" onclick="addWeightSheet()">＋ Registrar</button></h2>
+      <div class="chart">${weightChart(ws, S.profile.goal)}</div>
+      <div class="grid3" style="margin-top:12px;text-align:center">
+        <div class="kv"><span>Atual</span><b>${fmt(c.w)}</b></div>
+        <div class="kv"><span>Variação</span><b class="${c.w<=S.profile.weight0?'dn':'up'}">${c.w<=S.profile.weight0?'−':'+'}${fmt(Math.abs(c.w-S.profile.weight0))}</b></div>
+        <div class="kv"><span>Faltam</span><b>${fmt(c.left)}</b></div></div></div>
+    <div class="card"><h2>IMC <span class="pill ${cc}">${cat}</span></h2>
+      <div class="row" style="align-items:flex-end;gap:8px"><b style="font-size:30px">${fmt(c.bmi)}</b><span class="sm mut" style="margin-bottom:6px">kg/m²</span></div>
+      <div style="position:relative;margin:14px 0 4px"><div style="display:flex;height:9px;border-radius:5px;overflow:hidden">
+        <div style="flex:3.5;background:#f2d27b"></div><div style="flex:6.5;background:#38c58f"></div><div style="flex:5;background:#ffb27a"></div><div style="flex:10;background:#f07b7e"></div></div>
+        <div style="position:absolute;top:-4px;left:calc(${Math.max(0,Math.min(100,(c.bmi-15)/25*100))}% - 8px);width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--ink)"></div></div>
+      <div class="row between sm mut"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>40</span></div>
+      <p class="sm mut" style="margin-top:8px">Faixa saudável para sua altura: ${fmt(18.5*Math.pow(S.profile.height/100,2))} a ${fmt(24.9*Math.pow(S.profile.height/100,2))} kg.</p></div>
+    <div class="card"><h2>Medidas (cm) <button class="btn sm" onclick="measureSheet()">＋ Registrar</button></h2>
+      ${last ? `<table class="t"><tr><th>Medida</th><th>Início</th><th>Atual</th><th>Diferença</th></tr>
+        ${MEAS.filter(([k])=>last[k]||first[k]).map(([k,n])=>{ const a=first[k], b=last[k]; const d = (a&&b)? b-a : null;
+          return `<tr><td>${n}</td><td>${a?fmt(a):'—'}</td><td>${b?fmt(b):'—'}</td><td class="${d===null?'':d<=0?'dn':'up'}">${d===null?'—':(d>0?'+':'')+fmt(d)}</td></tr>`; }).join('')}</table>
+        <p class="sm mut" style="margin-top:8px">${ms.length} registro(s) · primeiro em ${dshort(first.d)}, último em ${dshort(last.d)}</p>
+        ${last.waist&&last.hip?`<p class="sm" style="margin-top:6px">Relação cintura/quadril: <b>${fmt(last.waist/last.hip,2)}</b> <span class="mut">(ideal: ${S.profile.sex==='F'?'até 0,85':'até 0,90'})</span></p>`:''}`
+        : '<div class="empty">Registre suas medidas para acompanhar a evolução. Meça sempre no mesmo horário, com fita métrica, sem apertar.</div>'}</div>
+    <div class="card"><h2>Últimos 7 dias <small>calorias consumidas</small></h2>${weekChart(c.target)}</div>
+    <div class="card"><h2>Histórico de peso</h2>
+      ${ws.slice().reverse().slice(0,30).map((w,i,arr)=>{ const prev = arr[i+1]; const d = prev? w.kg-prev.kg : null;
+        return `<div class="item"><div class="grow"><div class="t">${fmt(w.kg)} kg</div><div class="s">${fromKey(w.d).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+        ${d!==null?`<span class="sm ${d<=0?'dn':'up'}">${d>0?'+':''}${fmt(d)}</span>`:''}${ws.length>1?`<button class="x" onclick="delWeight('${w.d}')">✕</button>`:''}</div>`; }).join('')}</div>
+  </div>`;
+}
+function weightChart(ws, goal){
+  const W_ = 340, H = 170, P = { l:34, r:10, t:12, b:24 };
+  if (ws.length < 2) return `<div class="empty">Registre seu peso ao longo dos dias para ver o gráfico. Recomendado: 1 vez por semana, sempre no mesmo horário.</div>`;
+  const xs = ws.map(w=>fromKey(w.d).getTime()), ys = ws.map(w=>w.kg).concat([goal]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) || x0+1, y0 = Math.floor(Math.min(...ys)-1), y1 = Math.ceil(Math.max(...ys)+1);
+  const X = t => P.l + (t-x0)/((x1-x0)||1)*(W_-P.l-P.r), Y = v => P.t + (y1-v)/(y1-y0)*(H-P.t-P.b);
+  const pts = ws.map(w=>[X(fromKey(w.d).getTime()), Y(w.kg)]);
+  const line = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area = line + ` L${pts[pts.length-1][0]} ${H-P.b} L${pts[0][0]} ${H-P.b} Z`;
+  const ticks = [y0, (y0+y1)/2, y1];
+  return `<svg viewBox="0 0 ${W_} ${H}"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#12a17a" stop-opacity=".25"/><stop offset="1" stop-color="#12a17a" stop-opacity="0"/></linearGradient></defs>
+    ${ticks.map(t=>`<line x1="${P.l}" x2="${W_-P.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="#eef1ef"/><text x="${P.l-6}" y="${Y(t)+4}" font-size="10" fill="#8a978f" text-anchor="end">${r0(t)}</text>`).join('')}
+    <line x1="${P.l}" x2="${W_-P.r}" y1="${Y(goal)}" y2="${Y(goal)}" stroke="#ff8a4c" stroke-dasharray="4 4"/><text x="${W_-P.r}" y="${Y(goal)-5}" font-size="10" fill="#ff8a4c" text-anchor="end">meta ${fmt(goal)}</text>
+    <path d="${area}" fill="url(#g)"/><path d="${line}" fill="none" stroke="#12a17a" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#fff" stroke="#12a17a" stroke-width="2"/>`).join('')}
+    <text x="${P.l}" y="${H-6}" font-size="10" fill="#8a978f">${dshort(ws[0].d)}</text><text x="${W_-P.r}" y="${H-6}" font-size="10" fill="#8a978f" text-anchor="end">${dshort(ws[ws.length-1].d)}</text></svg>`;
+}
+function weekChart(target){
+  const days = []; for (let i=6;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(dkey(d)); }
+  const vals = days.map(k=>dayTotals(k).kcal), mx = Math.max(target*1.25, ...vals);
+  const avg = vals.filter(v=>v>0);
+  return `<div style="display:flex;align-items:flex-end;gap:8px;height:130px;position:relative;border-bottom:1px solid var(--line)">
+    <div style="position:absolute;left:0;right:0;bottom:${target/mx*100}%;border-top:1.5px dashed #ff8a4c"></div>
+    ${vals.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;align-items:center">
+      <div style="font-size:10px;color:var(--mut);margin-bottom:3px">${v?r0(v):''}</div>
+      <div style="width:100%;max-width:30px;height:${v/mx*100}%;min-height:${v?3:0}px;border-radius:6px 6px 2px 2px;background:${v>target?'#ffb27a':'#38c58f'}"></div></div>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:6px">${days.map(k=>`<div style="flex:1;text-align:center;font-size:11px;color:var(--mut)">${fromKey(k).toLocaleDateString('pt-BR',{weekday:'short'}).slice(0,3)}</div>`).join('')}</div>
+    <p class="sm mut" style="margin-top:8px">Linha laranja = meta (${target} kcal). ${avg.length?'Média dos dias registrados: <b>'+r0(avg.reduce((a,b)=>a+b,0)/avg.length)+' kcal</b>':''}</p>`;
+}
+function addWeightSheet(){
+  openSheet('Registrar peso', `<label class="f"><span>Peso (kg)</span><input class="inp" id="wV" inputmode="decimal" value="${fmt(curWeight())}" style="font-size:22px;font-weight:700;text-align:center"></label>
+    <label class="f"><span>Data</span><input class="inp" id="wD" type="date" value="${dkey()}" max="${dkey()}"></label>
+    <p class="sm mut" style="margin-bottom:12px">Dica: pese-se pela manhã, em jejum, depois de ir ao banheiro.</p>
+    <button class="btn" onclick="saveWeight()">Salvar</button>`);
+}
+function saveWeight(){
+  const v = num($('#wV').value), d = $('#wD').value || dkey();
+  if (!v || v < 30 || v > 300) return toast('Peso inválido');
+  const prev = curWeight();
+  S.weights = S.weights.filter(w=>w.d!==d); S.weights.push({ d, kg:r1(v) }); save(); closeSheet(); render();
+  toast(v < prev ? `Menos ${fmt(prev-v)} kg! Continue assim 👏` : 'Peso registrado ✓');
+}
+function delWeight(d){ S.weights = S.weights.filter(w=>w.d!==d); save(); render(); }
+function measureSheet(){
+  const last = S.measures.slice().sort((a,b)=>a.d<b.d?-1:1).pop() || {};
+  openSheet('Registrar medidas', `<p class="sm mut" style="margin-bottom:12px">Preencha as medidas que quiser, em centímetros.</p>
+    <div class="grid2">${MEAS.map(([k,n])=>`<label class="f"><span>${n}</span><input class="inp" id="m_${k}" inputmode="decimal" placeholder="${last[k]?fmt(last[k]):'cm'}"></label>`).join('')}</div>
+    <label class="f"><span>Data</span><input class="inp" id="mD" type="date" value="${dkey()}" max="${dkey()}"></label>
+    <details class="sm mut" style="margin-bottom:14px"><summary class="b" style="color:var(--pri2)">Como medir corretamente</summary>
+      <p style="margin-top:6px;line-height:1.5"><b>Cintura:</b> na parte mais fina do tronco, acima do umbigo.<br><b>Abdômen:</b> na altura do umbigo.<br><b>Quadril:</b> na parte mais larga do bumbum.<br><b>Busto:</b> na linha dos mamilos.<br><b>Braço:</b> no meio, entre ombro e cotovelo.<br><b>Coxa:</b> no meio, entre virilha e joelho.<br>Fita reta, sem apertar, respirando normalmente.</p></details>
+    <button class="btn" onclick="saveMeasure()">Salvar</button>`);
+}
+function saveMeasure(){
+  const m = { d:$('#mD').value || dkey() }; let any = false;
+  MEAS.forEach(([k]) => { const v = num($('#m_'+k).value); if (v && v > 10 && v < 250) { m[k] = r1(v); any = true; } });
+  if (!any) return toast('Preencha pelo menos uma medida');
+  const ex = S.measures.find(x=>x.d===m.d); if (ex) Object.assign(ex, m); else S.measures.push(m);
+  save(); closeSheet(); render(); toast('Medidas salvas ✓');
+}
+
+/* ================= perfil ================= */
+function renderProfile(){
+  const c = calc(), p = S.profile, al = ACT_LEVELS.find(a=>a[0]==p.activity) || ACT_LEVELS[0];
+  const eta = c.weeks ? new Date(Date.now()+c.weeks*7*864e5).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : null;
+  $('#app').innerHTML = `<div class="screen">
+    <div class="top"><div><h1>Perfil e metas</h1><p>Seu plano personalizado</p></div></div>
+    <div class="card"><div class="row"><div class="avatar" style="width:56px;height:56px;font-size:22px">${esc(p.name[0].toUpperCase())}</div>
+      <div style="flex:1"><div class="b" style="font-size:17px">${esc(p.name)}</div><div class="sm mut">${age()} anos · ${fmt(p.height,0)} cm · ${al[1]}</div></div>
+      <button class="btn sm sec" onclick="editProfile()">Editar</button></div></div>
+    <div class="card"><h2>Suas metas diárias</h2><div class="grid2">
+      <div class="kv" style="background:var(--priL)"><span>Calorias</span><b>${c.target} kcal</b></div>
+      <div class="kv"><span>Água</span><b>${fmt(c.water/1000,2)} L</b></div>
+      <div class="kv"><span>Proteínas</span><b>${c.protein} g</b></div>
+      <div class="kv"><span>Carboidratos</span><b>${c.carb} g</b></div>
+      <div class="kv"><span>Gorduras</span><b>${c.fat} g</b></div>
+      <div class="kv"><span>Exercício</span><b>150 min/sem</b></div></div></div>
+    <div class="card"><h2>Como calculamos</h2>
+      <div class="item"><div class="grow"><div class="t">Metabolismo basal (TMB)</div><div class="s">Energia gasta em repouso · fórmula Mifflin-St Jeor</div></div><b>${r0(c.bmr)} kcal</b></div>
+      <div class="item"><div class="grow"><div class="t">Gasto diário total</div><div class="s">TMB × fator de atividade (${String(p.activity).replace('.',',')})</div></div><b>${r0(c.tdee)} kcal</b></div>
+      <div class="item"><div class="grow"><div class="t">Déficit calórico</div><div class="s">${c.target<=c.floor+5?'Limitado ao mínimo seguro de '+c.floor+' kcal':'Ritmo '+({lento:'suave',normal:'recomendado',rapido:'intenso'})[p.pace]}</div></div><b>−${r0(c.tdee-c.target)} kcal</b></div>
+      <div class="item"><div class="grow"><div class="t">Ritmo estimado</div><div class="s">${eta?'Previsão para a meta: '+eta:'Meta atingida — plano de manutenção'}</div></div><b>${c.weekly>0?fmt(c.weekly,2)+' kg/sem':'—'}</b></div>
+      <p class="sm mut" style="margin-top:8px">Estimativas. O resultado real varia de pessoa para pessoa — por isso é importante registrar o peso e as medidas.</p></div>
+    <div class="card"><h2>Backup dos dados</h2>
+      <p class="sm mut" style="margin-bottom:12px">Os dados ficam só neste celular. Faça um backup de vez em quando para não perder nada se trocar de aparelho.</p>
+      <div class="grid2"><button class="btn sec" onclick="exportData()">Exportar</button><button class="btn ghost" onclick="importSheet()">Importar</button></div></div>
+    <div class="card"><button class="btn red" onclick="resetSheet()">Apagar todos os dados</button></div>
+    <p class="sm mut" style="text-align:center;padding:4px 14px 10px;line-height:1.5">O NutriFit é uma ferramenta de apoio e não substitui o acompanhamento de nutricionista ou médico. Gestantes, lactantes e pessoas com doenças crônicas devem ter orientação profissional.</p>
+  </div>`;
+}
+function editProfile(){
+  openSheet('Editar perfil', profileForm(S.profile) + '<button class="btn" id="svP">Salvar</button>'); bindProfileForm();
+  $('#svP').onclick = () => { const r = readProfile(); if (!r) return;
+    const p = S.profile; Object.assign(p, { name:r.name, birth:r.birth, height:r.height, goal:r.goal, sex:r.sex, activity:r.activity, pace:r.pace });
+    if (Math.abs(r.weight - curWeight()) >= 0.05) { S.weights = S.weights.filter(w=>w.d!==dkey()); S.weights.push({ d:dkey(), kg:r1(r.weight) }); }
+    save(); closeSheet(); render(); toast('Perfil atualizado ✓'); };
+}
+function exportData(){
+  const txt = JSON.stringify(S);
+  if (window.AndroidApp && AndroidApp.share) { AndroidApp.share('Backup NutriFit ' + dkey(), txt); return; }
+  openSheet('Exportar', `<p class="sm mut" style="margin-bottom:8px">Copie o texto abaixo e guarde (ex.: envie para você mesmo no WhatsApp ou e-mail).</p><textarea class="inp" rows="8" readonly>${esc(txt)}</textarea>`);
+}
+function importSheet(){
+  openSheet('Importar backup', `<p class="sm mut" style="margin-bottom:8px">Cole aqui o texto do backup. Os dados atuais serão substituídos.</p>
+    <textarea class="inp" id="impT" rows="8" placeholder='{"profile":...}'></textarea><div style="height:12px"></div><button class="btn" onclick="doImport()">Importar</button>`);
+}
+function doImport(){
+  try { const d = JSON.parse($('#impT').value); if (!d.profile || !Array.isArray(d.weights)) throw 0;
+    S = Object.assign(fresh(), d); save(); closeSheet(); tab='home'; render(); toast('Backup restaurado ✓'); }
+  catch(e){ toast('Texto de backup inválido'); }
+}
+function resetSheet(){
+  openSheet('Apagar dados', `<p style="margin-bottom:16px">Isso apaga perfil, refeições, treinos, pesos e medidas deste celular. Não dá para desfazer.</p>
+    <button class="btn red" onclick="localStorage.removeItem(KEY);S=fresh();closeSheet();tab='home';render()">Sim, apagar tudo</button><div style="height:8px"></div><button class="btn ghost" onclick="closeSheet()">Cancelar</button>`);
+}
+
+/* ================= folha (modal) ================= */
+function openSheet(t, html){ $('#shT').textContent = t; $('#shB').innerHTML = html; $('#sheetBg').classList.add('on'); $('#shB').scrollTop = 0; }
+function closeSheet(){ $('#sheetBg').classList.remove('on'); }
+$('#sheetBg').addEventListener('click', e => { if (e.target.id === 'sheetBg') closeSheet(); });
+// botão voltar do Android
+window.onBack = function(){
+  if ($('#player').classList.contains('on')) { quitWorkout(); return true; }
+  if ($('#sheetBg').classList.contains('on')) { closeSheet(); return true; }
+  if (S.profile && tab !== 'home') { go('home'); return true; }
+  return false;
+};
+
+render();
+</script>
+</body>
+</html>
