@@ -25,6 +25,29 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("api")
 
 
+# Modelos de entrada (em nível de módulo para o FastAPI resolver as anotações)
+class Login(BaseModel):
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=200)
+
+
+class Toggle(BaseModel):
+    enabled: bool
+
+
+class RiskBody(BaseModel):
+    stake: float = Field(gt=0, le=10000)
+    payout: float = Field(gt=0, le=1)
+    daily_loss_limit: float = Field(gt=0)
+    max_exposure: float = Field(gt=0)
+    max_trades_day: int = Field(gt=0, le=500)
+    max_open_trades: int = Field(gt=0, le=20)
+    max_consecutive_losses: int = Field(gt=0, le=50)
+    min_confidence: float = Field(ge=0.5, le=0.9)
+    allow_uncalibrated: bool = False
+
+
+
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     S = settings or Settings()
     if not S.admin_password or len(S.admin_password) < 10:
@@ -59,10 +82,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             raise HTTPException(401, "token inválido ou expirado")
 
     # ------------------------------------------------ autenticação
-    class Login(BaseModel):
-        username: str = Field(max_length=64)
-        password: str = Field(max_length=200)
-
     @app.post("/auth/login")
     def login(body: Login, request: Request):
         key = f"{body.username}|{request.client.host if request.client else '-'}"
@@ -149,9 +168,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                  "calibration": {sym: {f"{k[1]}|{k[2]}m": {"wins": v[0], "n": v[1]} for k, v in cal.table.items() if k[0] == s.name}
                                  for sym, cal in bot.engine.calibrators.items()}} for s in ai.STRATEGIES]
 
-    class Toggle(BaseModel):
-        enabled: bool
-
     @app.put("/strategies/{name}")
     def toggle_strategy(name: str, body: Toggle, _: str = Depends(user)):
         names = {s.name for s in ai.STRATEGIES}
@@ -206,17 +222,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     @app.get("/risk")
     def risk(_: str = Depends(user)):
         return bot.risk.snapshot()
-
-    class RiskBody(BaseModel):
-        stake: float = Field(gt=0, le=10000)
-        payout: float = Field(gt=0, le=1)
-        daily_loss_limit: float = Field(gt=0)
-        max_exposure: float = Field(gt=0)
-        max_trades_day: int = Field(gt=0, le=500)
-        max_open_trades: int = Field(gt=0, le=20)
-        max_consecutive_losses: int = Field(gt=0, le=50)
-        min_confidence: float = Field(ge=0.5, le=0.9)
-        allow_uncalibrated: bool = False
 
     @app.put("/risk")
     def set_risk(body: RiskBody, _: str = Depends(user)):

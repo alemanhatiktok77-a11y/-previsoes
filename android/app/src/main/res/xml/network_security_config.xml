@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HTTPS é o padrão. HTTP sem criptografia é permitido apenas para testes na rede local;
+     o app mostra um aviso quando o servidor não usa HTTPS. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+</network-security-config>
