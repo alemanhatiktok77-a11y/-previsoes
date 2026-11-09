@@ -1,0 +1,27 @@
+FRANÇAIS — app para aprender francês do A1 ao C1
+=================================================
+
+COMO GERAR O APK
+
+Opção 1 — pelo GitHub (não precisa instalar nada no computador)
+ 1. Crie uma conta grátis em github.com e um repositório novo (pode ser privado).
+ 2. Clique em "uploading an existing file" e arraste TODO o conteúdo desta pasta,
+    inclusive a pasta .github (se ela não aparecer, ative "mostrar arquivos ocultos").
+ 3. Abra a aba "Actions" > "Gerar APK". O build leva uns 5 minutos.
+ 4. Na página do build, baixe "Francais-apk", descompacte e envie o .apk para o celular.
+ 5. No celular, abra o arquivo e permita "instalar apps desconhecidos".
+
+Opção 2 — Android Studio
+ Abra esta pasta no Android Studio > Build > Build App Bundle(s) / APK(s) > Build APK(s).
+
+Opção 3 — sem APK
+ Abra o arquivo app/src/main/assets/index.html no Chrome do celular.
+
+ÁUDIO E MICROFONE NO APK
+ - A voz usa o mecanismo de voz do Android. Se não houver som:
+   Configurações > Sistema > Idiomas > Saída de texto para fala > Google >
+   instale o pacote "Francês (França)".
+ - O exercício de fala usa o reconhecimento de voz do Google.
+
+O progresso fica salvo no próprio celular.
+Para editar o conteúdo, mude a lista UNITS no index.html (palavras, frases e questões).
