@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Muitas emissoras públicas ainda transmitem em http:// : o tráfego sem criptografia precisa ser permitido. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
